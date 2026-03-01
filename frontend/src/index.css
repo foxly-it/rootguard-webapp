@@ -1,84 +1,131 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: Inter, system-ui, -apple-system, sans-serif;
+/* =====================================================
+   RootGuard Design System v1
+   Dark-first Enterprise DNS UI
+   ===================================================== */
+
+/* -----------------------------------------------------
+   Color Tokens
+----------------------------------------------------- */
+
+:root {
+
+  /* Backgrounds */
+  --rg-bg-main: #0b1628;
+  --rg-bg-sidebar: #162338;
+  --rg-bg-header: #0f1c2f;
+
+  /* Cards */
+  --rg-card-bg: #1e2c42;
+  --rg-card-border: rgba(255,255,255,0.05);
+
+  /* Text */
+  --rg-text-primary: #f3f6fb;
+  --rg-text-secondary: #9fb4d4;
+
+  /* Accent */
+  --rg-accent: #00bcd4;
+  --rg-success: #22c55e;
+
+  /* Layout */
+  --rg-content-max: 1100px;
 }
+
+/* -----------------------------------------------------
+   Base Layout
+----------------------------------------------------- */
 
 body {
-  background: #0f172a;
-  color: #e2e8f0;
+  margin: 0;
+  background: var(--rg-bg-main);
+  color: var(--rg-text-primary);
+  font-family: Inter, system-ui, sans-serif;
 }
 
-a {
-  text-decoration: none;
-  color: inherit;
-}
+/* -----------------------------------------------------
+   Layout Grid
+----------------------------------------------------- */
 
 .layout {
   display: flex;
-  height: 100vh;
+  min-height: calc(100vh - 70px);
 }
 
 .sidebar {
-  width: 260px;
-  background: #111827;
+  width: 230px;
+  background: var(--rg-bg-sidebar);
   padding: 30px 20px;
-  border-right: 1px solid #1f2937;
-}
-
-.sidebar h2 {
-  font-size: 20px;
-  margin-bottom: 30px;
-}
-
-.sidebar nav {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .sidebar a {
-  padding: 8px 12px;
+  text-decoration: none;
+  color: var(--rg-text-secondary);
+  font-size: 0.95rem;
+  padding: 8px 10px;
   border-radius: 6px;
-  color: #9ca3af;
-  transition: 0.2s;
+  transition: all 0.2s ease;
 }
 
 .sidebar a:hover {
-  background: #1f2937;
-  color: white;
+  background: rgba(255,255,255,0.05);
+  color: var(--rg-text-primary);
 }
 
 .main {
   flex: 1;
-  padding: 40px;
-  background: #0f172a;
+  padding: 50px 40px;
+  display: flex;
+  justify-content: center;
 }
 
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-top: 30px;
+/* Content wrapper */
+.content-container {
+  width: 100%;
+  max-width: var(--rg-content-max);
 }
 
-.card {
-  background: #1e293b;
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid #334155;
-  transition: 0.2s;
+/* =====================================================
+   Sidebar Navigation
+   ===================================================== */
+
+.sidebar {
+  width: 240px;
+  background: #142338;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.card h3 {
-  margin-bottom: 10px;
+.nav-item {
+  text-decoration: none;
+  color: #9fb4d4;
+  font-size: 0.95rem;
+  padding: 10px 14px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
-.status-ok {
-  color: #22c55e;
+.nav-item:hover {
+  background: rgba(255,255,255,0.05);
+  color: #ffffff;
 }
 
-.status-error {
-  color: #ef4444;
+.nav-item.active {
+  color: #ffffff;
+  background: rgba(0, 188, 212, 0.1);
+}
+
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  background: var(--rg-accent);
+  border-radius: 4px;
 }

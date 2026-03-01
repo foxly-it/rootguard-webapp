@@ -1,14 +1,19 @@
 // =====================================================
 // File: backend/internal/httpapi/router.go
-// Purpose: API + Static React SPA (panic-safe version)
+// Purpose: Central HTTP router configuration
 // =====================================================
 
 package httpapi
 
 import (
 	"net/http"
-	"strings"
+	"path/filepath"
 )
+
+// =====================================================
+// NewRouter()
+// Registers API routes + static frontend
+// =====================================================
 
 func NewRouter() http.Handler {
 
@@ -17,27 +22,31 @@ func NewRouter() http.Handler {
 	// ==========================
 	// API Routes
 	// ==========================
-
 	mux.HandleFunc("/health", HealthHandler)
 	mux.HandleFunc("/api/health", HealthHandler)
+	mux.HandleFunc("/api/version", VersionHandler)
 
 	// ==========================
-	// Static React App
+	// Static Frontend (SPA)
 	// ==========================
-
 	fileServer := http.FileServer(http.Dir("./web"))
 
-	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
-		// API-Pfade nicht vom Static Server behandeln
-		if strings.HasPrefix(r.URL.Path, "/api") {
+		// Wenn API → direkt durchreichen
+		if len(r.URL.Path) >= 4 && r.URL.Path[:4] == "/api" {
 			http.NotFound(w, r)
 			return
 		}
 
-		// Statische Dateien ausliefern (index.html wird automatisch bei "/" geladen)
+		// SPA Fallback → index.html
+		if r.URL.Path == "/" {
+			http.ServeFile(w, r, filepath.Join("web", "index.html"))
+			return
+		}
+
 		fileServer.ServeHTTP(w, r)
-	}))
+	})
 
 	return mux
 }

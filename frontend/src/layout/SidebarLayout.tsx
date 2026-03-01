@@ -1,33 +1,71 @@
 // =====================================================
 // File: frontend/src/layout/SidebarLayout.tsx
-// Purpose: Main application layout with sidebar navigation
-// Notes:
-// - Uses type-only import for ReactNode (TS5 strict mode)
-// - Required when "verbatimModuleSyntax": true
+// Purpose: Layout with Sidebar Navigation
 // =====================================================
 
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
+import Header from "./Header";
 
 interface Props {
   children: ReactNode;
 }
 
 export default function SidebarLayout({ children }: Props) {
+
   return (
-    <div className="layout">
-      <aside className="sidebar">
-        <h2>🦊 RootGuard</h2>
+    <>
+      <Header />
 
-        <nav>
-          <Link to="/">Overview</Link>
-          <Link to="/docker">Docker Stack</Link>
-          <Link to="/assistant">Unbound Assistant</Link>
-          <Link to="/health">Health</Link>
-        </nav>
-      </aside>
+      <div className="layout">
 
-      <main className="main">{children}</main>
-    </div>
+        {/* ================= Sidebar ================= */}
+        <aside className="sidebar">
+
+          <NavLink
+            to="/"
+            className={({ isActive }) =>
+              isActive ? "nav-item active" : "nav-item"
+            }
+          >
+            Overview
+          </NavLink>
+
+          <NavLink
+            to="/docker"
+            className={({ isActive }) =>
+              isActive ? "nav-item active" : "nav-item"
+            }
+          >
+            Docker Stack
+          </NavLink>
+
+          <NavLink
+            to="/assistant"
+            className={({ isActive }) =>
+              isActive ? "nav-item active" : "nav-item"
+            }
+          >
+            Unbound Assistant
+          </NavLink>
+
+          <NavLink
+            to="/health"
+            className={({ isActive }) =>
+              isActive ? "nav-item active" : "nav-item"
+            }
+          >
+            Health
+          </NavLink>
+
+        </aside>
+
+        {/* ================= Main ================= */}
+        <main className="main">
+          {children}
+        </main>
+
+      </div>
+    </>
   );
 }

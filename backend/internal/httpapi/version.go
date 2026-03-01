@@ -1,3 +1,8 @@
+// =====================================================
+// File: backend/internal/httpapi/version.go
+// Purpose: Expose backend build metadata to frontend
+// =====================================================
+
 package httpapi
 
 import (
@@ -5,24 +10,22 @@ import (
 	"net/http"
 )
 
-var (
-	Version   = "dev"
-	GitCommit = "none"
-)
+var Version = "dev"
+var Commit = "unknown"
 
 type VersionResponse struct {
-	Version   string `json:"version"`
-	GitCommit string `json:"git_commit"`
+	Version string `json:"version"`
+	Commit  string `json:"commit"`
 }
 
 func VersionHandler(w http.ResponseWriter, r *http.Request) {
 
+	w.Header().Set("Content-Type", "application/json")
+
 	response := VersionResponse{
-		Version:   Version,
-		GitCommit: GitCommit,
+		Version: Version,
+		Commit:  Commit,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }

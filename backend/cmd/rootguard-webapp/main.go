@@ -1,7 +1,11 @@
 // =====================================================
 // File: backend/cmd/rootguard-webapp/main.go
-// Purpose: RootGuard WebApp Backend Entry Point
-// Notes: Includes build metadata injection (version, commit)
+// Project: RootGuard WebApp
+// Purpose: Application entrypoint
+// Notes:
+// - Injects build metadata via -ldflags
+// - Registers graceful shutdown
+// - Syncs version info with httpapi package
 // =====================================================
 
 package main
@@ -18,18 +22,33 @@ import (
 )
 
 // =====================================================
-// Build metadata (werden via -ldflags injiziert)
-// Docker build setzt:
-// -X main.version=<version>
-// -X main.commit=<commit>
+// Build Metadata (Injected at build time)
+// These values are overwritten via:
+//
+// go build -ldflags "-X main.version=v0.1.0 -X main.commit=abc123"
+//
+// If not set, defaults remain.
 // =====================================================
 
 var version = "dev"
 var commit = "unknown"
 
-func main() {
+// =====================================================
+// init()
+// Sync build metadata into httpapi package
+// This allows /api/version to expose real values
+// =====================================================
 
-	log.Printf("RootGuard WebApp starting (version=%s, commit=%s)", version, commit)
+func init() {
+	httpapi.Version = version
+	httpapi.Commit = commit
+}
+
+// =====================================================
+// main()
+// =====================================================
+
+func main() {
 
 	port := getEnv("PORT", "8080")
 
@@ -43,14 +62,17 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// Start HTTP server in goroutine
 	go func() {
+		log.Printf("RootGuard WebApp starting (version=%s, commit=%s)", version, commit)
 		log.Printf("Listening on :%s", port)
+
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
 		}
 	}()
 
-	// Graceful shutdown
+	// Graceful shutdown handling
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
@@ -66,6 +88,11 @@ func main() {
 
 	log.Println("Server stopped cleanly")
 }
+
+// =====================================================
+// getEnv()
+// Helper to read environment variables with fallback
+// =====================================================
 
 func getEnv(key, fallback string) string {
 	if value, exists := os.LookupEnv(key); exists {
