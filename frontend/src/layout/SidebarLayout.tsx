@@ -1,4 +1,12 @@
-import { ReactNode } from "react";
+// =====================================================
+// File: frontend/src/layout/SidebarLayout.tsx
+// Purpose: Main application layout with sidebar navigation
+// Notes:
+// - Uses type-only import for ReactNode (TS5 strict mode)
+// - Required when "verbatimModuleSyntax": true
+// =====================================================
+
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 interface Props {

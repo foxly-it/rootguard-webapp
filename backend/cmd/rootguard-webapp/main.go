@@ -1,3 +1,9 @@
+// =====================================================
+// File: backend/cmd/rootguard-webapp/main.go
+// Purpose: RootGuard WebApp Backend Entry Point
+// Notes: Includes build metadata injection (version, commit)
+// =====================================================
+
 package main
 
 import (
@@ -11,7 +17,19 @@ import (
 	"github.com/foxly-it/rootguard-webapp/backend/internal/httpapi"
 )
 
+// =====================================================
+// Build metadata (werden via -ldflags injiziert)
+// Docker build setzt:
+// -X main.version=<version>
+// -X main.commit=<commit>
+// =====================================================
+
+var version = "dev"
+var commit = "unknown"
+
 func main() {
+
+	log.Printf("RootGuard WebApp starting (version=%s, commit=%s)", version, commit)
 
 	port := getEnv("PORT", "8080")
 
@@ -26,9 +44,9 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("RootGuard WebApp backend listening on :%s\n", port)
+		log.Printf("Listening on :%s", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("server error: %v\n", err)
+			log.Fatalf("server error: %v", err)
 		}
 	}()
 
@@ -43,7 +61,7 @@ func main() {
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("server shutdown failed: %v\n", err)
+		log.Fatalf("server shutdown failed: %v", err)
 	}
 
 	log.Println("Server stopped cleanly")

@@ -1,35 +1,43 @@
+// =====================================================
+// File: backend/internal/httpapi/router.go
+// Purpose: API + Static React SPA (panic-safe version)
+// =====================================================
+
 package httpapi
 
 import (
 	"net/http"
+	"strings"
 )
 
 func NewRouter() http.Handler {
 
 	mux := http.NewServeMux()
 
-	// Health
+	// ==========================
+	// API Routes
+	// ==========================
+
 	mux.HandleFunc("/health", HealthHandler)
+	mux.HandleFunc("/api/health", HealthHandler)
 
-	// API
-	mux.HandleFunc("/api/version", VersionHandler)
+	// ==========================
+	// Static React App
+	// ==========================
 
-	// CORS wrapper (for Vite dev)
-	return withCORS(mux)
-}
+	fileServer := http.FileServer(http.Dir("./web"))
 
-func withCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
+		// API-Pfade nicht vom Static Server behandeln
+		if strings.HasPrefix(r.URL.Path, "/api") {
+			http.NotFound(w, r)
 			return
 		}
 
-		next.ServeHTTP(w, r)
-	})
+		// Statische Dateien ausliefern (index.html wird automatisch bei "/" geladen)
+		fileServer.ServeHTTP(w, r)
+	}))
+
+	return mux
 }
