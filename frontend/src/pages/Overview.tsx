@@ -1,104 +1,254 @@
 // =====================================================
 // File: frontend/src/pages/Overview.tsx
-// Purpose: Clean Enterprise Dashboard Layout
+// Purpose: Dashboard with Real Backend Hook
 // =====================================================
 
-import Card from "../components/Card";
-import StatusIndicator from "../components/StatusIndicator";
+import { useEffect, useState } from "react";
 
-import DnsIcon from "../components/icons/DnsIcon";
-import DockerIcon from "../components/icons/DockerIcon";
+import CardHeader from "../components/CardHeader";
+import MiniTrend from "../components/MiniTrend";
+import ProgressBar from "../components/ProgressBar";
+import ServiceControls from "../components/ServiceControls";
+
+import "../styles/glass.css";
+
+import type { ServiceStatus } from "../types/status";
+
+import {
+  fetchDashboard,
+  serviceAction,
+} from "../api/client";
+
+// =====================================================
+// Types
+// =====================================================
+
+interface DockerStats {
+  cpu: number;
+  memory: number;
+  containers: number;
+  status: ServiceStatus;
+}
+
+interface DnsStats {
+  status: ServiceStatus;
+  resolver: string;
+  dnssec: boolean;
+  trend: number[];
+}
+
+// =====================================================
+// Component
+// =====================================================
 
 export default function Overview() {
+  const [dockerStats, setDockerStats] = useState<DockerStats>({
+    cpu: 0,
+    memory: 0,
+    containers: 0,
+    status: "healthy",
+  });
+
+  const [dnsStats, setDnsStats] = useState<DnsStats>({
+    status: "healthy",
+    resolver: "",
+    dnssec: false,
+    trend: [12, 16, 14, 20, 24, 22, 30],
+  });
+
+  const [lastChecked, setLastChecked] = useState(
+    new Date().toLocaleTimeString()
+  );
+
+  // =====================================================
+  // Load Dashboard Data from Backend
+  // =====================================================
+
+  async function loadDashboard() {
+    try {
+      const data = await fetchDashboard();
+
+      setDockerStats({
+        cpu: data.docker.cpu,
+        memory: data.docker.memory,
+        containers: data.docker.containers,
+        status: data.docker.status,
+      });
+
+      setDnsStats(prev => ({
+        ...prev,
+        status: data.dns.status,
+        resolver: data.dns.resolver,
+        dnssec: data.dns.dnssec,
+      }));
+
+      setLastChecked(new Date().toLocaleTimeString());
+    } catch (err) {
+      console.error("Dashboard load failed:", err);
+    }
+  }
+
+  useEffect(() => {
+    loadDashboard();
+
+    const interval = setInterval(() => {
+      loadDashboard();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // =====================================================
+  // Render
+  // =====================================================
 
   return (
-    <div className="content-container">
-
-      <h1 className="page-title">
+    <div
+      style={{
+        padding: "40px 80px 60px 80px",
+        maxWidth: "1500px",
+        margin: "0 auto",
+      }}
+    >
+      <h1
+        style={{
+          fontSize: "28px",
+          fontWeight: 600,
+          marginBottom: "36px",
+          opacity: 0.85,
+        }}
+      >
         System Overview
       </h1>
 
-      <div className="dashboard-grid">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, minmax(520px, 1fr))",
+          gap: "48px",
+        }}
+      >
+        {/* DNS CARD */}
+        <div className="glass-card compact">
+          <CardHeader
+            title="DNS Engine"
+            status={dnsStats.status}
+            lastChecked={lastChecked}
+          />
 
-        {/* ================= DNS ENGINE ================= */}
-        <Card>
-
-          <div className="card-header">
-            <div className="card-title">
-              <DnsIcon />
-              <h3>DNS Engine</h3>
-            </div>
-            <StatusIndicator status="ok" />
+          <div style={{ marginBottom: "24px" }}>
+            <MiniTrend data={dnsStats.trend} />
           </div>
 
-          <div className="card-body">
+          <InfoRow label="Resolver" value={dnsStats.resolver} />
+          <InfoRow
+            label="DNSSEC"
+            value={dnsStats.dnssec ? "Enabled" : "Disabled"}
+          />
 
-            <div className="card-info">
-              <span>Resolver: Unbound</span>
-              <span>DNSSEC: Enabled</span>
-            </div>
-
-            <div className="card-divider" />
-
-            <div className="metrics-grid">
-
-              <div className="metric">
-                <div className="metric-value">24.5k</div>
-                <div className="metric-label">Queries Today</div>
-              </div>
-
-              <div className="metric">
-                <div className="metric-value">92%</div>
-                <div className="metric-label">Cache Hit Rate</div>
-              </div>
-
-              <div className="metric">
-                <div className="metric-value">12ms</div>
-                <div className="metric-label">Avg Response</div>
-              </div>
-
-            </div>
-
+          <div style={{ marginTop: "28px" }}>
+            <ServiceControls
+              onStart={() => serviceAction("dns", "start")}
+              onStop={() => serviceAction("dns", "stop")}
+              onRestart={() => serviceAction("dns", "restart")}
+            />
           </div>
-        </Card>
+        </div>
 
-        {/* ================= DOCKER STACK ================= */}
-        <Card>
+        {/* DOCKER CARD */}
+        <div className="glass-card compact">
+          <CardHeader
+            title="Docker Stack"
+            status={dockerStats.status}
+            lastChecked={lastChecked}
+          />
 
-          <div className="card-header">
-            <div className="card-title">
-              <DockerIcon />
-              <h3>Docker Stack</h3>
-            </div>
-            <StatusIndicator status="ok" />
+          <InfoRow
+            label="Containers"
+            value={`${dockerStats.containers} Running`}
+            highlight
+          />
+
+          <MetricBlock
+            label="CPU Usage"
+            value={`${dockerStats.cpu}%`}
+          >
+            <ProgressBar value={dockerStats.cpu} color="#22c55e" />
+          </MetricBlock>
+
+          <MetricBlock
+            label="Memory Usage"
+            value={`${dockerStats.memory}%`}
+          >
+            <ProgressBar value={dockerStats.memory} color="#3b82f6" />
+          </MetricBlock>
+
+          <div style={{ marginTop: "28px" }}>
+            <ServiceControls
+              onStart={() => serviceAction("docker", "start")}
+              onStop={() => serviceAction("docker", "stop")}
+              onRestart={() => serviceAction("docker", "restart")}
+            />
           </div>
-
-          <div className="card-body">
-            <div className="card-info">
-              <span>AdGuard Home: Running</span>
-              <span>Unbound: Running</span>
-            </div>
-          </div>
-
-        </Card>
-
-        {/* ================= CONFIGURATION ================= */}
-        <Card className="card-full">
-
-          <div className="card-header">
-            <h3>Configuration</h3>
-          </div>
-
-          <div className="card-body">
-            <div className="card-info">
-              <span>Last Change: 2026-03-01</span>
-              <span>Version: 0.1.0</span>
-            </div>
-          </div>
-
-        </Card>
-
+        </div>
       </div>
+    </div>
+  );
+}
+
+// =====================================================
+// Helper Components
+// =====================================================
+
+function InfoRow({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div style={{ marginBottom: "18px" }}>
+      <div style={{ fontSize: "13px", opacity: 0.6 }}>
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: highlight ? "20px" : "16px",
+          fontWeight: highlight ? 600 : 500,
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function MetricBlock({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ marginBottom: "22px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "14px",
+          marginBottom: "8px",
+        }}
+      >
+        <span style={{ opacity: 0.7 }}>{label}</span>
+        <span style={{ fontWeight: 600 }}>{value}</span>
+      </div>
+      {children}
     </div>
   );
 }

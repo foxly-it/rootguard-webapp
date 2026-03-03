@@ -1,0 +1,45 @@
+/* =====================================================
+   File: frontend/src/styles/dashboard.css
+   Purpose: Dashboard Layout & Status Styling
+   ===================================================== */
+
+/* ================= GRID LAYOUT ================= */
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  align-items: stretch; /* gleiche Höhe */
+}
+
+/* Jede Card füllt ihre Grid-Zelle */
+.dashboard-grid > * {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Card Body verteilt Inhalte */
+.card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+}
+
+/* ================= STATUS PULSE ================= */
+
+@keyframes statusPulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.25);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

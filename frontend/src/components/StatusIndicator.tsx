@@ -1,25 +1,27 @@
 // =====================================================
 // File: frontend/src/components/StatusIndicator.tsx
-// Purpose: Professional animated status indicator
+// Purpose: Compact status dot indicator
 // =====================================================
 
+import type { ServiceStatus } from "../types/status";
+import "./status-indicator.css";
+
 interface Props {
-  status: "ok" | "warning" | "error";
+  status: ServiceStatus;
 }
 
 export default function StatusIndicator({ status }: Props) {
-
   const label =
-    status === "ok"
-      ? "Operational"
-      : status === "warning"
+    status === "healthy"
+      ? "Healthy"
+      : status === "degraded"
       ? "Degraded"
-      : "Offline";
+      : "Down";
 
   return (
-    <div className={`rg-status ${status}`}>
-      <span className="rg-status-dot" />
-      <span className="rg-status-label">{label}</span>
+    <div className="status-wrapper">
+      <div className={`status-dot status-${status}`} />
+      <span className="status-label">{label}</span>
     </div>
   );
 }

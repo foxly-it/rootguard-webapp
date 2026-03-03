@@ -6,6 +6,8 @@ import "./index.css";
 import "./styles/header.css";
 import "./styles/card.css";
 import "./styles/status.css";
+import "./styles/dashboard.css";
+import "./styles/buttons.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
