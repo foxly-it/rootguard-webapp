@@ -6,6 +6,7 @@
 // - Injects build metadata via -ldflags
 // - Registers graceful shutdown
 // - Syncs version info with httpapi package
+// - Starts Docker Stats Collector
 // =====================================================
 
 package main
@@ -18,16 +19,16 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/foxly-it/rootguard-webapp/backend/internal/docker"
 	"github.com/foxly-it/rootguard-webapp/backend/internal/httpapi"
 )
 
 // =====================================================
 // Build Metadata (Injected at build time)
-// These values are overwritten via:
+//
+// Example:
 //
 // go build -ldflags "-X main.version=v0.1.0 -X main.commit=abc123"
-//
-// If not set, defaults remain.
 // =====================================================
 
 var version = "dev"
@@ -36,7 +37,6 @@ var commit = "unknown"
 // =====================================================
 // init()
 // Sync build metadata into httpapi package
-// This allows /api/version to expose real values
 // =====================================================
 
 func init() {
@@ -50,6 +50,18 @@ func init() {
 
 func main() {
 
+	// -------------------------------------------------
+	// Start Docker Stats Collector
+	//
+	// This goroutine continuously polls Docker stats
+	// and updates the in-memory metrics cache.
+	//
+	// This ensures the dashboard does not need to call
+	// the Docker API on every request.
+	// -------------------------------------------------
+
+	docker.StartStatsCollector()
+
 	port := getEnv("PORT", "8080")
 
 	router := httpapi.NewRouter()
@@ -62,19 +74,28 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Start HTTP server in goroutine
+	// -------------------------------------------------
+	// Start HTTP server
+	// -------------------------------------------------
+
 	go func() {
+
 		log.Printf("RootGuard WebApp starting (version=%s, commit=%s)", version, commit)
 		log.Printf("Listening on :%s", port)
 
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
 		}
+
 	}()
 
-	// Graceful shutdown handling
+	// -------------------------------------------------
+	// Graceful Shutdown Handling
+	// -------------------------------------------------
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
+
 	<-quit
 
 	log.Println("Shutting down server...")
@@ -95,8 +116,10 @@ func main() {
 // =====================================================
 
 func getEnv(key, fallback string) string {
+
 	if value, exists := os.LookupEnv(key); exists {
 		return value
 	}
+
 	return fallback
 }
