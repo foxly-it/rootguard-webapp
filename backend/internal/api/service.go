@@ -1,6 +1,17 @@
 // =====================================================
 // File: backend/internal/api/service.go
+// Project: RootGuard WebApp
 // Purpose: Handle service control actions
+//
+// Endpoint:
+//
+// POST /api/service/{name}/{action}
+//
+// Examples:
+//
+// POST /api/service/adguard/start
+// POST /api/service/unbound/restart
+//
 // =====================================================
 
 package api
@@ -8,14 +19,12 @@ package api
 import (
 	"net/http"
 	"strings"
+
+	"github.com/foxly-it/rootguard-webapp/backend/internal/docker"
 )
 
 // -----------------------------------------------------
 // HandleServiceAction
-// Example endpoint:
-//
-// POST /api/service/adguard/start
-// POST /api/service/unbound/restart
 // -----------------------------------------------------
 
 func HandleServiceAction(w http.ResponseWriter, r *http.Request) {
@@ -32,6 +41,34 @@ func HandleServiceAction(w http.ResponseWriter, r *http.Request) {
 	serviceName := parts[0]
 	action := parts[1]
 
+	var err error
+
+	switch action {
+
+	case "start":
+
+		err = docker.StartContainer(serviceName)
+
+	case "stop":
+
+		err = docker.StopContainer(serviceName)
+
+	case "restart":
+
+		err = docker.RestartContainer(serviceName)
+
+	default:
+
+		http.Error(w, "Invalid action", http.StatusBadRequest)
+		return
+	}
+
+	if err != nil {
+
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("service=" + serviceName + " action=" + action))
+	w.Write([]byte("ok"))
 }
