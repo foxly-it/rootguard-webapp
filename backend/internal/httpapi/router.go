@@ -9,6 +9,8 @@
 // - expose health endpoints
 // - expose dashboard endpoints
 // - expose system overview endpoint
+// - expose service detection endpoint
+// - expose service control endpoint
 // - serve frontend SPA
 //
 // Uses:
@@ -36,6 +38,7 @@ import (
 // /api/version
 // /api/dashboard
 // /api/system
+// /api/services
 // /api/service/{name}/{action}
 //
 // Also serves the frontend SPA.
@@ -98,10 +101,47 @@ func NewRouter() http.Handler {
 	})
 
 	// ==================================================
+	// Service Detection Endpoint
+	//
+	// GET /api/services
+	//
+	// Returns detected DNS related services
+	// detected by the RootGuard service engine.
+	//
+	// Example response:
+	//
+	// [
+	//   {
+	//     "name": "AdGuard Home",
+	//     "type": "binary",
+	//     "status": "running"
+	//   },
+	//   {
+	//     "name": "Unbound",
+	//     "type": "binary",
+	//     "status": "running"
+	//   }
+	// ]
+	//
+	// ==================================================
+
+	mux.HandleFunc("/api/services", func(w http.ResponseWriter, r *http.Request) {
+
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		api.HandleServices(w, r)
+
+	})
+
+	// ==================================================
 	// Service Control Endpoint
 	//
 	// Example:
 	// POST /api/service/adguard/start
+	// POST /api/service/unbound/restart
 	//
 	// ==================================================
 
