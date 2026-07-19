@@ -18,7 +18,8 @@ async function request<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.status}`);
+    const detail = (await response.text()).trim();
+    throw new Error(detail || `API Error: ${response.status}`);
   }
 
   return response.json();
@@ -92,4 +93,19 @@ export async function updateUnboundSettings(
     method: "PUT",
     body: JSON.stringify(settings),
   });
+}
+
+export interface AdGuardStatus {
+  configured: boolean;
+  healthy: boolean;
+  upstream: string;
+  upstream_ready: boolean;
+}
+
+export async function fetchAdGuardStatus(): Promise<AdGuardStatus> {
+  return request<AdGuardStatus>("/api/adguard/status");
+}
+
+export async function bootstrapAdGuard(): Promise<AdGuardStatus> {
+  return request<AdGuardStatus>("/api/adguard/bootstrap", { method: "POST" });
 }
