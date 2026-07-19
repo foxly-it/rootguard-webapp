@@ -17,9 +17,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/foxly-it/rootguard-webapp/backend/internal/docker"
+	"github.com/foxly-it/rootguard-webapp/backend/internal/coreclient"
 	"github.com/foxly-it/rootguard-webapp/backend/internal/httpapi"
 )
 
@@ -49,29 +50,33 @@ func init() {
 // =====================================================
 
 func main() {
-
-	// -------------------------------------------------
-	// Start Docker Stats Collector
-	//
-	// This goroutine continuously polls Docker stats
-	// and updates the in-memory metrics cache.
-	//
-	// This ensures the dashboard does not need to call
-	// the Docker API on every request.
-	// -------------------------------------------------
-
-	docker.StartStatsCollector()
-
 	port := getEnv("PORT", "8080")
+	coreToken := os.Getenv("ROOTGUARD_API_TOKEN")
+	adminPassword := os.Getenv("ROOTGUARD_ADMIN_PASSWORD")
+	if coreToken == "" {
+		log.Fatal("ROOTGUARD_API_TOKEN must be set")
+	}
+	if adminPassword == "" {
+		log.Fatal("ROOTGUARD_ADMIN_PASSWORD must be set")
+	}
 
-	router := httpapi.NewRouter()
+	core := coreclient.New(
+		getEnv("ROOTGUARD_CORE_URL", "http://rootguard-core:8081"),
+		coreToken,
+	)
+	router := httpapi.RequireBasicAuth(
+		httpapi.NewRouter(core),
+		getEnv("ROOTGUARD_ADMIN_USER", "admin"),
+		adminPassword,
+	)
 
 	server := &http.Server{
-		Addr:         ":" + port,
-		Handler:      router,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:              ":" + port,
+		Handler:           router,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	// -------------------------------------------------
@@ -94,7 +99,7 @@ func main() {
 	// -------------------------------------------------
 
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 	<-quit
 

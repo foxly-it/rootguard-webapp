@@ -32,30 +32,12 @@ export default function SidebarLayout({ children }: Props) {
           </NavLink>
 
           <NavLink
-            to="/docker"
+            to="/unbound"
             className={({ isActive }) =>
               isActive ? "nav-item active" : "nav-item"
             }
           >
-            Docker Stack
-          </NavLink>
-
-          <NavLink
-            to="/assistant"
-            className={({ isActive }) =>
-              isActive ? "nav-item active" : "nav-item"
-            }
-          >
-            Unbound Assistant
-          </NavLink>
-
-          <NavLink
-            to="/health"
-            className={({ isActive }) =>
-              isActive ? "nav-item active" : "nav-item"
-            }
-          >
-            Health
+            Unbound Settings
           </NavLink>
 
         </aside>

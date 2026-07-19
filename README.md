@@ -10,7 +10,9 @@
 
 ## 📌 Overview
 
-RootGuard WebApp is the HTTP API and UI layer of the RootGuard ecosystem.
+RootGuard WebApp is the authenticated HTTP and UI layer of the RootGuard
+ecosystem. It contains no direct Docker control code and communicates with
+RootGuard Core over an internal token-protected API.
 
 It exposes infrastructure orchestration capabilities provided by **RootGuard Core** and delivers a modern web-based control plane for DNS stack management.
 
@@ -70,6 +72,9 @@ rootguard-webapp/
 
 ````bash
 cd backend
+ROOTGUARD_CORE_URL=http://localhost:8081 \
+ROOTGUARD_API_TOKEN=development-token \
+ROOTGUARD_ADMIN_PASSWORD=change-me \
 go run ./cmd/rootguard-webapp
 ````
 
@@ -94,14 +99,18 @@ docker build -t rootguard-webapp:dev .
 ### Run Container
 
 ````bash
-docker run -p 8080:8080 rootguard-webapp:dev
+docker run -p 8080:8080 \
+  -e ROOTGUARD_CORE_URL=http://rootguard-core:8081 \
+  -e ROOTGUARD_API_TOKEN=replace-me \
+  -e ROOTGUARD_ADMIN_PASSWORD=replace-me \
+  rootguard-webapp:dev
 ````
 
 ### Test Endpoints
 
 ````bash
 curl http://localhost:8080/health
-curl http://localhost:8080/version
+curl -u admin:replace-me http://localhost:8080/api/version
 ````
 
 ---
@@ -122,11 +131,11 @@ RootGuard WebApp follows strict design constraints:
 
 Planned development stages:
 
-- Core module integration via Go modules  
+- Core integration via an internal HTTP API
 - DNS configuration UI  
 - Stack deployment interface  
 - Live container monitoring  
-- Role-based authentication  
+- Session-based authentication and role management
 - Multi-architecture image builds  
 - GitHub Actions CI/CD  
 - GHCR image distribution  

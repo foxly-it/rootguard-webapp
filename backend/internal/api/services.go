@@ -7,10 +7,9 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
-	"github.com/foxly-it/rootguard-webapp/backend/internal/services"
+	"github.com/foxly-it/rootguard-webapp/backend/internal/coreclient"
 )
 
 // -----------------------------------------------------
@@ -22,7 +21,7 @@ import (
 // detection engine.
 // -----------------------------------------------------
 
-func HandleServices(w http.ResponseWriter, r *http.Request) {
+func HandleServices(w http.ResponseWriter, r *http.Request, core *coreclient.Client) {
 
 	// Only allow GET
 	if r.Method != http.MethodGet {
@@ -30,15 +29,10 @@ func HandleServices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Run detection engine
-	serviceList := services.DetectServices()
-
-	// JSON response
-	w.Header().Set("Content-Type", "application/json")
-
-	err := json.NewEncoder(w).Encode(serviceList)
+	serviceList, err := core.Services(r.Context())
 	if err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	writeJSON(w, http.StatusOK, serviceList)
 }
