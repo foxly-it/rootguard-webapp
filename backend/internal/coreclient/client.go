@@ -70,6 +70,13 @@ type UnboundSettings struct {
 	Threads           int  `json:"threads"`
 }
 
+type AdGuardStatus struct {
+	Configured    bool   `json:"configured"`
+	Healthy       bool   `json:"healthy"`
+	Upstream      string `json:"upstream"`
+	UpstreamReady bool   `json:"upstream_ready"`
+}
+
 func (c *Client) Dashboard(ctx context.Context) (Dashboard, error) {
 	var result Dashboard
 	err := c.do(ctx, http.MethodGet, "/api/dashboard", nil, &result)
@@ -103,6 +110,18 @@ func (c *Client) UnboundSettings(ctx context.Context) (UnboundSettings, error) {
 func (c *Client) UpdateUnboundSettings(ctx context.Context, settings UnboundSettings) (UnboundSettings, error) {
 	var result UnboundSettings
 	err := c.do(ctx, http.MethodPut, "/api/unbound/settings", settings, &result)
+	return result, err
+}
+
+func (c *Client) AdGuardStatus(ctx context.Context) (AdGuardStatus, error) {
+	var result AdGuardStatus
+	err := c.do(ctx, http.MethodGet, "/api/adguard/status", nil, &result)
+	return result, err
+}
+
+func (c *Client) BootstrapAdGuard(ctx context.Context) (AdGuardStatus, error) {
+	var result AdGuardStatus
+	err := c.do(ctx, http.MethodPost, "/api/adguard/bootstrap", nil, &result)
 	return result, err
 }
 
