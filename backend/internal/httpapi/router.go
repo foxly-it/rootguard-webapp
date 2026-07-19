@@ -168,6 +168,22 @@ func NewRouter(core *coreclient.Client) http.Handler {
 		}
 	})
 
+	mux.HandleFunc("/api/adguard/status", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		api.HandleGetAdGuardStatus(w, r, core)
+	})
+
+	mux.HandleFunc("/api/adguard/bootstrap", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		api.HandleBootstrapAdGuard(w, r, core)
+	})
+
 	// ==================================================
 	// Static Frontend (SPA)
 	// ==================================================

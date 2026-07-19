@@ -40,6 +40,15 @@ export default function SidebarLayout({ children }: Props) {
             Unbound Settings
           </NavLink>
 
+          <NavLink
+            to="/adguard"
+            className={({ isActive }) =>
+              isActive ? "nav-item active" : "nav-item"
+            }
+          >
+            AdGuard Home
+          </NavLink>
+
         </aside>
 
         {/* ================= Main ================= */}
