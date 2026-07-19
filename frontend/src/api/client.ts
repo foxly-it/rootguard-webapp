@@ -95,6 +95,58 @@ export async function updateUnboundSettings(
   });
 }
 
+export interface UnboundChange {
+  field: string;
+  before: string;
+  after: string;
+}
+
+export interface UnboundPreview {
+  changed: boolean;
+  changes: UnboundChange[];
+  rendered_config: string;
+}
+
+export interface UnboundHistoryEntry {
+  id: string;
+  created_at: string;
+  settings: UnboundSettings;
+  config?: string;
+}
+
+export interface UnboundDiagnosticCheck {
+  name: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface UnboundDiagnosticReport {
+  healthy: boolean;
+  checked_at: string;
+  checks: UnboundDiagnosticCheck[];
+}
+
+export async function previewUnboundSettings(settings: UnboundSettings): Promise<UnboundPreview> {
+  return request<UnboundPreview>("/api/unbound/preview", {
+    method: "POST",
+    body: JSON.stringify(settings),
+  });
+}
+
+export async function fetchUnboundHistory(): Promise<UnboundHistoryEntry[]> {
+  return request<UnboundHistoryEntry[]>("/api/unbound/history");
+}
+
+export async function restoreUnboundVersion(id: string): Promise<UnboundSettings> {
+  return request<UnboundSettings>(`/api/unbound/history/${encodeURIComponent(id)}/restore`, {
+    method: "POST",
+  });
+}
+
+export async function fetchUnboundDiagnostics(): Promise<UnboundDiagnosticReport> {
+  return request<UnboundDiagnosticReport>("/api/unbound/diagnostics");
+}
+
 export interface AdGuardStatus {
   configured: boolean;
   healthy: boolean;

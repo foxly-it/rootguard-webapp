@@ -41,9 +41,10 @@ Docker / System Services
 
 RootGuard WebApp acts purely as a presentation and API transport layer.
 
-The current UI includes service health and lifecycle controls, validated
-Unbound settings, and a one-click AdGuard Home bootstrap that keeps generated
-credentials inside RootGuard Core.
+The current UI includes service health and lifecycle controls, previewed and
+validated Unbound settings with version history, rollback, and diagnostics,
+and a one-click AdGuard Home bootstrap that keeps generated credentials inside
+RootGuard Core.
 
 ---
 

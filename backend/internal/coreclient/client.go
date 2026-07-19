@@ -70,6 +70,37 @@ type UnboundSettings struct {
 	Threads           int  `json:"threads"`
 }
 
+type UnboundChange struct {
+	Field  string `json:"field"`
+	Before string `json:"before"`
+	After  string `json:"after"`
+}
+
+type UnboundPreview struct {
+	Changed        bool            `json:"changed"`
+	Changes        []UnboundChange `json:"changes"`
+	RenderedConfig string          `json:"rendered_config"`
+}
+
+type UnboundHistoryEntry struct {
+	ID        string          `json:"id"`
+	CreatedAt time.Time       `json:"created_at"`
+	Settings  UnboundSettings `json:"settings"`
+	Config    string          `json:"config,omitempty"`
+}
+
+type UnboundDiagnosticCheck struct {
+	Name   string `json:"name"`
+	Passed bool   `json:"passed"`
+	Detail string `json:"detail"`
+}
+
+type UnboundDiagnosticReport struct {
+	Healthy   bool                     `json:"healthy"`
+	CheckedAt time.Time                `json:"checked_at"`
+	Checks    []UnboundDiagnosticCheck `json:"checks"`
+}
+
 type AdGuardStatus struct {
 	Configured    bool   `json:"configured"`
 	Healthy       bool   `json:"healthy"`
@@ -110,6 +141,30 @@ func (c *Client) UnboundSettings(ctx context.Context) (UnboundSettings, error) {
 func (c *Client) UpdateUnboundSettings(ctx context.Context, settings UnboundSettings) (UnboundSettings, error) {
 	var result UnboundSettings
 	err := c.do(ctx, http.MethodPut, "/api/unbound/settings", settings, &result)
+	return result, err
+}
+
+func (c *Client) PreviewUnboundSettings(ctx context.Context, settings UnboundSettings) (UnboundPreview, error) {
+	var result UnboundPreview
+	err := c.do(ctx, http.MethodPost, "/api/unbound/preview", settings, &result)
+	return result, err
+}
+
+func (c *Client) UnboundHistory(ctx context.Context) ([]UnboundHistoryEntry, error) {
+	var result []UnboundHistoryEntry
+	err := c.do(ctx, http.MethodGet, "/api/unbound/history", nil, &result)
+	return result, err
+}
+
+func (c *Client) RestoreUnboundVersion(ctx context.Context, id string) (UnboundSettings, error) {
+	var result UnboundSettings
+	err := c.do(ctx, http.MethodPost, "/api/unbound/history/"+id+"/restore", nil, &result)
+	return result, err
+}
+
+func (c *Client) UnboundDiagnostics(ctx context.Context) (UnboundDiagnosticReport, error) {
+	var result UnboundDiagnosticReport
+	err := c.do(ctx, http.MethodGet, "/api/unbound/diagnostics", nil, &result)
 	return result, err
 }
 
