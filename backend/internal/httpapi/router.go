@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 
 	"github.com/foxly-it/rootguard-webapp/backend/internal/api"
+	"github.com/foxly-it/rootguard-webapp/backend/internal/coreclient"
 )
 
 // =====================================================
@@ -44,7 +45,7 @@ import (
 // Also serves the frontend SPA.
 // =====================================================
 
-func NewRouter() http.Handler {
+func NewRouter(core *coreclient.Client) http.Handler {
 
 	mux := http.NewServeMux()
 
@@ -72,7 +73,7 @@ func NewRouter() http.Handler {
 			return
 		}
 
-		api.HandleDashboard(w, r)
+		api.HandleDashboard(w, r, core)
 
 	})
 
@@ -96,7 +97,7 @@ func NewRouter() http.Handler {
 			return
 		}
 
-		api.HandleSystem(w, r)
+		api.HandleSystem(w, r, core)
 
 	})
 
@@ -132,7 +133,7 @@ func NewRouter() http.Handler {
 			return
 		}
 
-		api.HandleServices(w, r)
+		api.HandleServices(w, r, core)
 
 	})
 
@@ -152,8 +153,19 @@ func NewRouter() http.Handler {
 			return
 		}
 
-		api.HandleServiceAction(w, r)
+		api.HandleServiceAction(w, r, core)
 
+	})
+
+	mux.HandleFunc("/api/unbound/settings", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			api.HandleGetUnboundSettings(w, r, core)
+		case http.MethodPut:
+			api.HandlePutUnboundSettings(w, r, core)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
 	})
 
 	// ==================================================
@@ -182,8 +194,14 @@ func NewRouter() http.Handler {
 			return
 		}
 
-		// Static assets
-		fileServer.ServeHTTP(w, r)
+		assetPath := filepath.Join("web", filepath.Clean(r.URL.Path))
+		if info, err := filepath.Glob(assetPath); err == nil && len(info) > 0 {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		// BrowserRouter fallback for client-side routes.
+		http.ServeFile(w, r, filepath.Join("web", "index.html"))
 
 	})
 

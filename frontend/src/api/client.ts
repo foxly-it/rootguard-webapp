@@ -67,3 +67,29 @@ export async function serviceAction(
     }
   );
 }
+
+// =====================================================
+// Unbound Settings
+// =====================================================
+
+export interface UnboundSettings {
+  qname_minimisation: boolean;
+  prefetch: boolean;
+  serve_expired: boolean;
+  cache_min_ttl: number;
+  cache_max_ttl: number;
+  threads: number;
+}
+
+export async function fetchUnboundSettings(): Promise<UnboundSettings> {
+  return request<UnboundSettings>("/api/unbound/settings");
+}
+
+export async function updateUnboundSettings(
+  settings: UnboundSettings
+): Promise<UnboundSettings> {
+  return request<UnboundSettings>("/api/unbound/settings", {
+    method: "PUT",
+    body: JSON.stringify(settings),
+  });
+}

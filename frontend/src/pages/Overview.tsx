@@ -88,14 +88,22 @@ export default function Overview() {
     }
   }
 
+  async function controlUnbound(action: "start" | "stop" | "restart") {
+    await serviceAction("unbound", action);
+    await loadDashboard();
+  }
+
   useEffect(() => {
-    loadDashboard();
+	const initialLoad = window.setTimeout(loadDashboard, 0);
 
     const interval = setInterval(() => {
       loadDashboard();
     }, 10000);
 
-    return () => clearInterval(interval);
+	return () => {
+	  clearTimeout(initialLoad);
+	  clearInterval(interval);
+	};
   }, []);
 
   // =====================================================
@@ -148,9 +156,9 @@ export default function Overview() {
 
           <div style={{ marginTop: "28px" }}>
             <ServiceControls
-              onStart={() => serviceAction("dns", "start")}
-              onStop={() => serviceAction("dns", "stop")}
-              onRestart={() => serviceAction("dns", "restart")}
+			  onStart={() => controlUnbound("start")}
+			  onStop={() => controlUnbound("stop")}
+			  onRestart={() => controlUnbound("restart")}
             />
           </div>
         </div>
@@ -183,13 +191,6 @@ export default function Overview() {
             <ProgressBar value={dockerStats.memory} color="#3b82f6" />
           </MetricBlock>
 
-          <div style={{ marginTop: "28px" }}>
-            <ServiceControls
-              onStart={() => serviceAction("docker", "start")}
-              onStop={() => serviceAction("docker", "stop")}
-              onRestart={() => serviceAction("docker", "restart")}
-            />
-          </div>
         </div>
       </div>
     </div>

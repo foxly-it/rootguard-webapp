@@ -18,57 +18,30 @@ package api
 
 import (
 	"net/http"
-	"strings"
 
-	"github.com/foxly-it/rootguard-webapp/backend/internal/docker"
+	"github.com/foxly-it/rootguard-webapp/backend/internal/coreclient"
 )
 
 // -----------------------------------------------------
 // HandleServiceAction
 // -----------------------------------------------------
 
-func HandleServiceAction(w http.ResponseWriter, r *http.Request) {
+func HandleServiceAction(w http.ResponseWriter, r *http.Request, core *coreclient.Client) {
+	serviceName, action, ok := parseServiceActionPath(r.URL.Path)
 
-	path := strings.TrimPrefix(r.URL.Path, "/api/service/")
-	parts := strings.Split(path, "/")
-
-	if len(parts) != 2 {
-
+	if !ok {
 		http.Error(w, "Invalid service path", http.StatusBadRequest)
 		return
 	}
-
-	serviceName := parts[0]
-	action := parts[1]
-
-	var err error
-
-	switch action {
-
-	case "start":
-
-		err = docker.StartContainer(serviceName)
-
-	case "stop":
-
-		err = docker.StopContainer(serviceName)
-
-	case "restart":
-
-		err = docker.RestartContainer(serviceName)
-
-	default:
-
+	if action != "start" && action != "stop" && action != "restart" {
 		http.Error(w, "Invalid action", http.StatusBadRequest)
 		return
 	}
 
+	response, err := core.ServiceAction(r.Context(), serviceName, action)
 	if err != nil {
-
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
+	writeJSON(w, http.StatusOK, response)
 }

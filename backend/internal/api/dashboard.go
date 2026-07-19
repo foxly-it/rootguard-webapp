@@ -6,10 +6,9 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
-	"github.com/foxly-it/rootguard-webapp/backend/internal/docker"
+	"github.com/foxly-it/rootguard-webapp/backend/internal/coreclient"
 )
 
 // -----------------------------------------------------
@@ -17,16 +16,11 @@ import (
 // HTTP endpoint returning dashboard statistics
 // -----------------------------------------------------
 
-func HandleDashboard(w http.ResponseWriter, r *http.Request) {
-
-	stats, err := docker.GetDashboardStats()
+func HandleDashboard(w http.ResponseWriter, r *http.Request, core *coreclient.Client) {
+	stats, err := core.Dashboard(r.Context())
 	if err != nil {
-
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-
-	json.NewEncoder(w).Encode(stats)
+	writeJSON(w, http.StatusOK, stats)
 }
