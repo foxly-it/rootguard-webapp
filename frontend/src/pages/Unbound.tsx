@@ -16,6 +16,7 @@ import {
   type UnboundSettings,
 } from "../api/client";
 import "../styles/unbound.css";
+import UnboundExpertEditor from "../components/UnboundExpertEditor";
 
 export default function Unbound() {
   const [settings, setSettings] = useState<UnboundSettings | null>(null);
@@ -207,12 +208,14 @@ export default function Unbound() {
         </section>
       )}
 
+      <UnboundExpertEditor version={history[0]?.id} onActivated={reload} />
+
       <section className="glass-card history-panel">
         <div className="panel-heading"><div><p className="unbound-eyebrow">ROLLBACK</p><h2>Konfigurationsverlauf</h2></div><span>{history.length} / 20 Versionen</span></div>
         {history.length === 0 ? <p className="muted-copy">Nach der ersten Änderung erscheinen hier die Ausgangs- und die neue Version.</p> : (
           <div className="history-list">{history.map((entry, index) => (
             <article key={entry.id}>
-              <div><strong>{index === 0 ? "Aktuellste Version" : "Gesicherte Version"}</strong><span>{formatDate(entry.created_at)}</span><small>Threads {entry.settings.threads} · TTL {entry.settings.cache_min_ttl}–{entry.settings.cache_max_ttl}</small></div>
+              <div><strong>{index === 0 ? "Aktuellste Version" : "Gesicherte Version"}</strong><span>{formatDate(entry.created_at)}</span><small>Threads {entry.settings.threads} · TTL {entry.settings.cache_min_ttl}–{entry.settings.cache_max_ttl}{entry.custom_config ? " · Custom Config" : ""}</small></div>
               <button className="secondary-action" type="button" disabled={busy || index === 0} onClick={() => restore(entry)}>{index === 0 ? "Aktiv" : "Wiederherstellen"}</button>
             </article>
           ))}</div>

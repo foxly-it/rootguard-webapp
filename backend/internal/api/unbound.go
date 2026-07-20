@@ -102,6 +102,66 @@ func HandleUnboundAdvice(w http.ResponseWriter, r *http.Request, core *coreclien
 	writeJSON(w, http.StatusOK, advice)
 }
 
+type customConfigRequest struct {
+	Content string `json:"content"`
+}
+
+func HandleGetUnboundCustom(w http.ResponseWriter, r *http.Request, core *coreclient.Client) {
+	document, err := core.UnboundCustom(r.Context())
+	if err != nil {
+		writeCoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, document)
+}
+
+func HandlePreviewUnboundCustom(w http.ResponseWriter, r *http.Request, core *coreclient.Client) {
+	request, ok := decodeCustomConfig(w, r)
+	if !ok {
+		return
+	}
+	preview, err := core.PreviewUnboundCustom(r.Context(), request.Content)
+	if err != nil {
+		writeCoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, preview)
+}
+
+func HandlePutUnboundCustom(w http.ResponseWriter, r *http.Request, core *coreclient.Client) {
+	request, ok := decodeCustomConfig(w, r)
+	if !ok {
+		return
+	}
+	document, err := core.UpdateUnboundCustom(r.Context(), request.Content)
+	if err != nil {
+		writeCoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, document)
+}
+
+func HandleUnboundDirectives(w http.ResponseWriter, r *http.Request, core *coreclient.Client) {
+	directives, err := core.UnboundDirectives(r.Context())
+	if err != nil {
+		writeCoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, directives)
+}
+
+func decodeCustomConfig(w http.ResponseWriter, r *http.Request) (customConfigRequest, bool) {
+	defer r.Body.Close()
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 65<<10))
+	decoder.DisallowUnknownFields()
+	var request customConfigRequest
+	if err := decoder.Decode(&request); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return customConfigRequest{}, false
+	}
+	return request, true
+}
+
 func decodeUnboundSettings(w http.ResponseWriter, r *http.Request) (coreclient.UnboundSettings, bool) {
 	defer r.Body.Close()
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10))

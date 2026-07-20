@@ -47,6 +47,10 @@ validated operational presets and draft recommendations, and a one-click
 AdGuard Home bootstrap that keeps generated credentials inside
 RootGuard Core.
 
+The Unbound expert mode manages a separate, versioned custom include with
+policy checks, full `unbound-checkconf` validation, contextual directive help,
+completion suggestions, advice, and automatic rollback.
+
 ---
 
 ## 📂 Repository Structure

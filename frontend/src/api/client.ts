@@ -112,6 +112,7 @@ export interface UnboundHistoryEntry {
   created_at: string;
   settings: UnboundSettings;
   config?: string;
+  custom_config?: string;
 }
 
 export interface UnboundDiagnosticCheck {
@@ -178,6 +179,57 @@ export async function fetchUnboundAdvice(settings: UnboundSettings): Promise<Unb
     method: "POST",
     body: JSON.stringify(settings),
   });
+}
+
+export interface UnboundCustomDocument {
+  content: string;
+  max_bytes: number;
+}
+
+export interface UnboundCustomAdvice {
+  id: string;
+  severity: "success" | "recommendation" | "warning";
+  line?: number;
+  title: string;
+  description: string;
+  suggestion: string;
+}
+
+export interface UnboundCustomPreview {
+  changed: boolean;
+  content: string;
+  validation: string;
+  advice: UnboundCustomAdvice[];
+}
+
+export interface UnboundDirectiveReference {
+  name: string;
+  section: string;
+  example: string;
+  description: string;
+  risk: "low" | "medium" | "high";
+}
+
+export async function fetchUnboundCustom(): Promise<UnboundCustomDocument> {
+  return request<UnboundCustomDocument>("/api/unbound/custom");
+}
+
+export async function previewUnboundCustom(content: string): Promise<UnboundCustomPreview> {
+  return request<UnboundCustomPreview>("/api/unbound/custom/preview", {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function updateUnboundCustom(content: string): Promise<UnboundCustomDocument> {
+  return request<UnboundCustomDocument>("/api/unbound/custom", {
+    method: "PUT",
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function fetchUnboundDirectives(): Promise<UnboundDirectiveReference[]> {
+  return request<UnboundDirectiveReference[]>("/api/unbound/directives");
 }
 
 export interface AdGuardStatus {
