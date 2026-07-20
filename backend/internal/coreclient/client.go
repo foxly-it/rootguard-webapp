@@ -101,6 +101,28 @@ type UnboundDiagnosticReport struct {
 	Checks    []UnboundDiagnosticCheck `json:"checks"`
 }
 
+type UnboundPreset struct {
+	ID          string          `json:"id"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	BestFor     string          `json:"best_for"`
+	Settings    UnboundSettings `json:"settings"`
+}
+
+type UnboundRecommendation struct {
+	ID          string `json:"id"`
+	Severity    string `json:"severity"`
+	Field       string `json:"field,omitempty"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Suggestion  string `json:"suggestion"`
+}
+
+type UnboundAdvice struct {
+	Status          string                  `json:"status"`
+	Recommendations []UnboundRecommendation `json:"recommendations"`
+}
+
 type AdGuardStatus struct {
 	Configured    bool   `json:"configured"`
 	Healthy       bool   `json:"healthy"`
@@ -165,6 +187,18 @@ func (c *Client) RestoreUnboundVersion(ctx context.Context, id string) (UnboundS
 func (c *Client) UnboundDiagnostics(ctx context.Context) (UnboundDiagnosticReport, error) {
 	var result UnboundDiagnosticReport
 	err := c.do(ctx, http.MethodGet, "/api/unbound/diagnostics", nil, &result)
+	return result, err
+}
+
+func (c *Client) UnboundPresets(ctx context.Context) ([]UnboundPreset, error) {
+	var result []UnboundPreset
+	err := c.do(ctx, http.MethodGet, "/api/unbound/presets", nil, &result)
+	return result, err
+}
+
+func (c *Client) UnboundAdvice(ctx context.Context, settings UnboundSettings) (UnboundAdvice, error) {
+	var result UnboundAdvice
+	err := c.do(ctx, http.MethodPost, "/api/unbound/advice", settings, &result)
 	return result, err
 }
 

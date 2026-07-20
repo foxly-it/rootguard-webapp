@@ -80,6 +80,28 @@ func HandleUnboundDiagnostics(w http.ResponseWriter, r *http.Request, core *core
 	writeJSON(w, http.StatusOK, report)
 }
 
+func HandleUnboundPresets(w http.ResponseWriter, r *http.Request, core *coreclient.Client) {
+	presets, err := core.UnboundPresets(r.Context())
+	if err != nil {
+		writeCoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, presets)
+}
+
+func HandleUnboundAdvice(w http.ResponseWriter, r *http.Request, core *coreclient.Client) {
+	settings, ok := decodeUnboundSettings(w, r)
+	if !ok {
+		return
+	}
+	advice, err := core.UnboundAdvice(r.Context(), settings)
+	if err != nil {
+		writeCoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, advice)
+}
+
 func decodeUnboundSettings(w http.ResponseWriter, r *http.Request) (coreclient.UnboundSettings, bool) {
 	defer r.Body.Close()
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10))
