@@ -83,10 +83,11 @@ type UnboundPreview struct {
 }
 
 type UnboundHistoryEntry struct {
-	ID        string          `json:"id"`
-	CreatedAt time.Time       `json:"created_at"`
-	Settings  UnboundSettings `json:"settings"`
-	Config    string          `json:"config,omitempty"`
+	ID           string          `json:"id"`
+	CreatedAt    time.Time       `json:"created_at"`
+	Settings     UnboundSettings `json:"settings"`
+	Config       string          `json:"config,omitempty"`
+	CustomConfig string          `json:"custom_config,omitempty"`
 }
 
 type UnboundDiagnosticCheck struct {
@@ -121,6 +122,35 @@ type UnboundRecommendation struct {
 type UnboundAdvice struct {
 	Status          string                  `json:"status"`
 	Recommendations []UnboundRecommendation `json:"recommendations"`
+}
+
+type UnboundCustomDocument struct {
+	Content  string `json:"content"`
+	MaxBytes int    `json:"max_bytes"`
+}
+
+type UnboundCustomAdvice struct {
+	ID          string `json:"id"`
+	Severity    string `json:"severity"`
+	Line        int    `json:"line,omitempty"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Suggestion  string `json:"suggestion"`
+}
+
+type UnboundCustomPreview struct {
+	Changed    bool                  `json:"changed"`
+	Content    string                `json:"content"`
+	Validation string                `json:"validation"`
+	Advice     []UnboundCustomAdvice `json:"advice"`
+}
+
+type UnboundDirectiveReference struct {
+	Name        string `json:"name"`
+	Section     string `json:"section"`
+	Example     string `json:"example"`
+	Description string `json:"description"`
+	Risk        string `json:"risk"`
 }
 
 type AdGuardStatus struct {
@@ -199,6 +229,30 @@ func (c *Client) UnboundPresets(ctx context.Context) ([]UnboundPreset, error) {
 func (c *Client) UnboundAdvice(ctx context.Context, settings UnboundSettings) (UnboundAdvice, error) {
 	var result UnboundAdvice
 	err := c.do(ctx, http.MethodPost, "/api/unbound/advice", settings, &result)
+	return result, err
+}
+
+func (c *Client) UnboundCustom(ctx context.Context) (UnboundCustomDocument, error) {
+	var result UnboundCustomDocument
+	err := c.do(ctx, http.MethodGet, "/api/unbound/custom", nil, &result)
+	return result, err
+}
+
+func (c *Client) PreviewUnboundCustom(ctx context.Context, content string) (UnboundCustomPreview, error) {
+	var result UnboundCustomPreview
+	err := c.do(ctx, http.MethodPost, "/api/unbound/custom/preview", map[string]string{"content": content}, &result)
+	return result, err
+}
+
+func (c *Client) UpdateUnboundCustom(ctx context.Context, content string) (UnboundCustomDocument, error) {
+	var result UnboundCustomDocument
+	err := c.do(ctx, http.MethodPut, "/api/unbound/custom", map[string]string{"content": content}, &result)
+	return result, err
+}
+
+func (c *Client) UnboundDirectives(ctx context.Context) ([]UnboundDirectiveReference, error) {
+	var result []UnboundDirectiveReference
+	err := c.do(ctx, http.MethodGet, "/api/unbound/directives", nil, &result)
 	return result, err
 }
 
