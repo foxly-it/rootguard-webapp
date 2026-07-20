@@ -126,6 +126,28 @@ export interface UnboundDiagnosticReport {
   checks: UnboundDiagnosticCheck[];
 }
 
+export interface UnboundPreset {
+  id: string;
+  name: string;
+  description: string;
+  best_for: string;
+  settings: UnboundSettings;
+}
+
+export interface UnboundRecommendation {
+  id: string;
+  severity: "success" | "recommendation" | "warning";
+  field?: string;
+  title: string;
+  description: string;
+  suggestion: string;
+}
+
+export interface UnboundAdvice {
+  status: "optimized" | "suggestions" | "review";
+  recommendations: UnboundRecommendation[];
+}
+
 export async function previewUnboundSettings(settings: UnboundSettings): Promise<UnboundPreview> {
   return request<UnboundPreview>("/api/unbound/preview", {
     method: "POST",
@@ -145,6 +167,17 @@ export async function restoreUnboundVersion(id: string): Promise<UnboundSettings
 
 export async function fetchUnboundDiagnostics(): Promise<UnboundDiagnosticReport> {
   return request<UnboundDiagnosticReport>("/api/unbound/diagnostics");
+}
+
+export async function fetchUnboundPresets(): Promise<UnboundPreset[]> {
+  return request<UnboundPreset[]>("/api/unbound/presets");
+}
+
+export async function fetchUnboundAdvice(settings: UnboundSettings): Promise<UnboundAdvice> {
+  return request<UnboundAdvice>("/api/unbound/advice", {
+    method: "POST",
+    body: JSON.stringify(settings),
+  });
 }
 
 export interface AdGuardStatus {
