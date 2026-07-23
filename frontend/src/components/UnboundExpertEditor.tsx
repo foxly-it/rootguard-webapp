@@ -8,15 +8,17 @@ import {
   type UnboundDirectiveReference,
 } from "../api/client";
 import "../styles/unbound-expert.css";
+import { useI18n } from "../i18n";
 
 const templates = [
-  { name: "Lokaler DNS-Eintrag", content: 'server:\n    local-zone: "home.arpa." static\n    local-data: "router.home.arpa. 300 IN A 192.168.1.1"\n' },
-  { name: "Private Antwort erlauben", content: 'server:\n    private-domain: "home.arpa"\n' },
-  { name: "Bedingte Weiterleitung", content: 'forward-zone:\n    name: "corp.example."\n    forward-addr: 192.168.1.53\n' },
-  { name: "Zusätzliche Härtung", content: "server:\n    hide-identity: yes\n    hide-version: yes\n    harden-glue: yes\n    harden-dnssec-stripped: yes\n    aggressive-nsec: yes\n" },
+  { label: "expert.template.local", content: 'server:\n    local-zone: "home.arpa." static\n    local-data: "router.home.arpa. 300 IN A 192.168.1.1"\n' },
+  { label: "expert.template.private", content: 'server:\n    private-domain: "home.arpa"\n' },
+  { label: "expert.template.forward", content: 'forward-zone:\n    name: "corp.example."\n    forward-addr: 192.168.1.53\n' },
+  { label: "expert.template.hardening", content: "server:\n    hide-identity: yes\n    hide-version: yes\n    harden-glue: yes\n    harden-dnssec-stripped: yes\n    aggressive-nsec: yes\n" },
 ];
 
 export default function UnboundExpertEditor({ version, onActivated }: { version?: string; onActivated: () => Promise<void> }) {
+  const { locale, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState("");
   const [draft, setDraft] = useState("");
@@ -40,8 +42,8 @@ export default function UnboundExpertEditor({ version, onActivated }: { version?
   }, []);
 
   useEffect(() => {
-    load().catch((err: unknown) => setError(errorMessage(err, "Expertenkonfiguration konnte nicht geladen werden")));
-  }, [load, version]);
+    load().catch((err: unknown) => setError(errorMessage(err, t("expert.loadError"))));
+  }, [load, t, version]);
 
   const prefix = useMemo(() => directivePrefix(draft, cursor), [draft, cursor]);
   const suggestions = useMemo(() => {
@@ -59,17 +61,17 @@ export default function UnboundExpertEditor({ version, onActivated }: { version?
       const result = await previewUnboundCustom(draft);
       setDraft(result.content);
       setPreview(result);
-      setMessage("Entwurf wurde durch RootGuard-Regeln und unbound-checkconf geprüft.");
+      setMessage(t("expert.previewReady"));
     } catch (err) {
       setPreview(null);
-      setError(errorMessage(err, "Expertenkonfiguration ist ungültig"));
+      setError(errorMessage(err, t("expert.invalid")));
     } finally {
       setBusy(false);
     }
   }
 
   async function activate() {
-    if (!preview?.changed || busy || !window.confirm("Geprüfte Expertenkonfiguration aktivieren und Unbound neu starten?")) return;
+    if (!preview?.changed || busy || !window.confirm(t("expert.confirmActivate"))) return;
     setBusy(true);
     clearFeedback();
     try {
@@ -78,9 +80,9 @@ export default function UnboundExpertEditor({ version, onActivated }: { version?
       setDraft(document.content);
       setPreview(null);
       await onActivated();
-      setMessage("90-rootguard-custom.conf wurde versioniert und sicher aktiviert.");
+      setMessage(t("expert.activated"));
     } catch (err) {
-      setError(errorMessage(err, "Expertenkonfiguration konnte nicht aktiviert werden"));
+      setError(errorMessage(err, t("expert.activateError")));
     } finally {
       setBusy(false);
     }
@@ -132,39 +134,39 @@ export default function UnboundExpertEditor({ version, onActivated }: { version?
   return (
     <section className="glass-card expert-panel">
       <div className="panel-heading expert-heading">
-        <div><p className="unbound-eyebrow">EXPERTENMODUS</p><h2>Zusätzliche Unbound-Konfiguration</h2></div>
-        <button className="secondary-action" type="button" onClick={() => setOpen(!open)}>{open ? "Editor schließen" : "Editor öffnen"}</button>
+        <div><p className="unbound-eyebrow">{t("expert.eyebrow")}</p><h2>{t("expert.title")}</h2></div>
+        <button className="secondary-action" type="button" onClick={() => setOpen(!open)}>{open ? t("expert.close") : t("expert.open")}</button>
       </div>
-      <p className="muted-copy">Bearbeitet ausschließlich <code>90-rootguard-custom.conf</code>. Die unveränderliche Basis und die geführten Einstellungen bleiben getrennt.</p>
-      {!open && <div className="expert-summary"><span>{active ? `${new TextEncoder().encode(active).length} Bytes aktiv` : "Keine Zusatzkonfiguration aktiv"}</span><span>Versioniert · Checkconf · Auto-Rollback</span></div>}
+      <p className="muted-copy">{t("expert.intro")}</p>
+      {!open && <div className="expert-summary"><span>{active ? t("expert.bytes", { count: new TextEncoder().encode(active).length }) : t("expert.none")}</span><span>{t("expert.safety")}</span></div>}
       {open && <>
-        <div className="expert-warning"><strong>Expertenmodus</strong><span>Fehlerhafte DNS-Regeln können Namen unerreichbar machen. RootGuard blockiert systemkritische Direktiven und aktiviert nur geprüfte Entwürfe.</span></div>
+        <div className="expert-warning"><strong>{t("expert.title")}</strong><span>{t("expert.warning")}</span></div>
         {message && <div className="feedback success">{message}</div>}
         {error && <div className="feedback error">{error}</div>}
-        <div className="template-row">{templates.map((template) => <button type="button" key={template.name} onClick={() => insertTemplate(template.content)}>{template.name}</button>)}</div>
+        <div className="template-row">{templates.map((template) => <button type="button" key={template.label} onClick={() => insertTemplate(template.content)}>{t(template.label)}</button>)}</div>
         <div className="expert-grid">
           <div>
-            <div className="editor-toolbar"><span>90-rootguard-custom.conf</span><span className={bytes > maxBytes ? "limit-exceeded" : ""}>{bytes.toLocaleString("de-DE")} / {maxBytes.toLocaleString("de-DE")} Bytes</span></div>
+            <div className="editor-toolbar"><span>90-rootguard-custom.conf</span><span className={bytes > maxBytes ? "limit-exceeded" : ""}>{bytes.toLocaleString(locale)} / {maxBytes.toLocaleString(locale)} Bytes</span></div>
             <div className="code-editor">
               <pre ref={highlightRef} aria-hidden="true">{highlightConfig(draft)}{"\n"}</pre>
-              <textarea ref={textareaRef} aria-label="Zusätzliche Unbound-Konfiguration" spellCheck={false} value={draft} onChange={(event) => { setDraft(event.target.value); setCursor(event.target.selectionStart); setPreview(null); }} onSelect={(event) => setCursor(event.currentTarget.selectionStart)} onKeyDown={handleKeyDown} onScroll={syncScroll} />
+              <textarea ref={textareaRef} aria-label={t("expert.title")} spellCheck={false} value={draft} onChange={(event) => { setDraft(event.target.value); setCursor(event.target.selectionStart); setPreview(null); }} onSelect={(event) => setCursor(event.currentTarget.selectionStart)} onKeyDown={handleKeyDown} onScroll={syncScroll} />
             </div>
-            {suggestions.length > 0 && <div className="completion-list"><span>Vervollständigen</span>{suggestions.map((item) => <button type="button" key={`${item.section}-${item.name}`} onClick={() => insertSuggestion(item)}><code>{item.name}</code><small>{item.section}</small></button>)}</div>}
+            {suggestions.length > 0 && <div className="completion-list"><span>{t("expert.complete")}</span>{suggestions.map((item) => <button type="button" key={`${item.section}-${item.name}`} onClick={() => insertSuggestion(item)}><code>{item.name}</code><small>{item.section}</small></button>)}</div>}
             <div className="editor-actions">
-              <button type="button" disabled={busy || bytes > maxBytes} onClick={createPreview}>{busy ? "Prüfe…" : "Entwurf prüfen"}</button>
-              <button className="secondary-action" type="button" disabled={busy || draft === active} onClick={() => { setDraft(active); setPreview(null); }}>Aktiven Stand laden</button>
+              <button type="button" disabled={busy || bytes > maxBytes} onClick={createPreview}>{busy ? t("expert.checking") : t("expert.check")}</button>
+              <button className="secondary-action" type="button" disabled={busy || draft === active} onClick={() => { setDraft(active); setPreview(null); }}>{t("expert.loadActive")}</button>
             </div>
           </div>
           <aside className="directive-help">
-            <p className="unbound-eyebrow">KONTEXTHILFE</p>
-            {selectedDirective ? <><div className="directive-title"><code>{selectedDirective.name}</code><span className={`risk-${selectedDirective.risk}`}>{riskLabel(selectedDirective.risk)}</span></div><p>{selectedDirective.description}</p><pre>{selectedDirective.example}</pre></> : <p className="muted-copy">Cursor auf eine bekannte Direktive setzen oder einige Buchstaben eingeben. RootGuard zeigt passende Vorschläge und deren Auswirkungen.</p>}
-            <details><summary>Unterstützte Direktiven durchsuchen</summary><div className="directive-catalog">{directives.map((item) => <button type="button" key={`${item.section}-${item.name}`} onClick={() => insertSuggestion(item)}><code>{item.name}</code><small>{item.description}</small></button>)}</div></details>
+            <p className="unbound-eyebrow">{t("expert.context")}</p>
+            {selectedDirective ? <><div className="directive-title"><code>{selectedDirective.name}</code><span className={`risk-${selectedDirective.risk}`}>{t(`expert.risk.${selectedDirective.risk}`)}</span></div><p>{selectedDirective.description}</p><pre>{selectedDirective.example}</pre></> : <p className="muted-copy">{t("expert.contextHelp")}</p>}
+            <details><summary>{t("expert.catalog")}</summary><div className="directive-catalog">{directives.map((item) => <button type="button" key={`${item.section}-${item.name}`} onClick={() => insertSuggestion(item)}><code>{item.name}</code><small>{item.description}</small></button>)}</div></details>
           </aside>
         </div>
         {preview && <div className="custom-preview">
-          <div className="validation-ok"><strong>✓ Syntaxprüfung bestanden</strong><span>{preview.validation}</span></div>
-          <div className="custom-advice">{preview.advice.map((item) => <article className={`advice-item ${item.severity}`} key={item.id}><strong>{item.title}{item.line ? ` · Zeile ${item.line}` : ""}</strong><p>{item.description}</p><small>{item.suggestion}</small></article>)}</div>
-          {!preview.changed ? <p>Der geprüfte Entwurf entspricht dem aktiven Stand.</p> : <button type="button" disabled={busy} onClick={activate}>Geprüften Entwurf aktivieren</button>}
+          <div className="validation-ok"><strong>{t("expert.valid")}</strong><span>{preview.validation}</span></div>
+          <div className="custom-advice">{preview.advice.map((item) => <article className={`advice-item ${item.severity}`} key={item.id}><strong>{item.title}{item.line ? ` · ${t("expert.line", { line: item.line })}` : ""}</strong><p>{item.description}</p><small>{item.suggestion}</small></article>)}</div>
+          {!preview.changed ? <p>{t("expert.same")}</p> : <button type="button" disabled={busy} onClick={activate}>{t("expert.activate")}</button>}
         </div>}
       </>}
     </section>
@@ -195,10 +197,6 @@ function highlightConfig(content: string) {
     const valueClass = /\b(yes|no|allow|deny|refuse|static|transparent)\b/i.test(value) ? "syntax-keyword" : /\d/.test(value) ? "syntax-number" : "syntax-value";
     return <span key={index}>{key.slice(0, key.length - key.trimStart().length)}<span className="syntax-directive">{key.trim()}</span>:<span className={valueClass}>{value}</span>{comment && <span className="syntax-comment">{comment}</span>}{"\n"}</span>;
   });
-}
-
-function riskLabel(risk: string) {
-  return ({ low: "Niedrig", medium: "Prüfen", high: "Hoch" } as Record<string, string>)[risk] ?? risk;
 }
 
 function errorMessage(error: unknown, fallback: string) {

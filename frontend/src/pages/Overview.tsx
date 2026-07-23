@@ -1,255 +1,221 @@
-// =====================================================
-// File: frontend/src/pages/Overview.tsx
-// Purpose: Dashboard with Real Backend Hook
-// =====================================================
-
-import { useEffect, useState } from "react";
-
-import CardHeader from "../components/CardHeader";
-import MiniTrend from "../components/MiniTrend";
-import ProgressBar from "../components/ProgressBar";
-import ServiceControls from "../components/ServiceControls";
-
-import "../styles/glass.css";
-
-import type { ServiceStatus } from "../types/status";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
+  ArrowRight,
+  Check,
+  Filter,
+  Globe2,
+  Network,
+  RefreshCw,
+  Server,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  fetchAdGuardStatus,
   fetchDashboard,
+  fetchInstallationStatus,
+  fetchServices,
   serviceAction,
+  type AdGuardStatus,
+  type DashboardResponse,
+  type InstallationStatus,
+  type ServiceInfo,
 } from "../api/client";
-
-// =====================================================
-// Types
-// =====================================================
-
-interface DockerStats {
-  cpu: number;
-  memory: number;
-  containers: number;
-  status: ServiceStatus;
-}
-
-interface DnsStats {
-  status: ServiceStatus;
-  resolver: string;
-  dnssec: boolean;
-  trend: number[];
-}
-
-// =====================================================
-// Component
-// =====================================================
+import "../styles/dashboard.css";
+import { useI18n } from "../i18n";
 
 export default function Overview() {
-  const [dockerStats, setDockerStats] = useState<DockerStats>({
-    cpu: 0,
-    memory: 0,
-    containers: 0,
-    status: "healthy",
-  });
+  const { locale, t } = useI18n();
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [installation, setInstallation] = useState<InstallationStatus | null>(null);
+  const [services, setServices] = useState<ServiceInfo[]>([]);
+  const [adGuard, setAdGuard] = useState<AdGuardStatus | null>(null);
+  const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const [busyService, setBusyService] = useState("");
+  const [error, setError] = useState("");
 
-  const [dnsStats, setDnsStats] = useState<DnsStats>({
-    status: "healthy",
-    resolver: "",
-    dnssec: false,
-    trend: [12, 16, 14, 20, 24, 22, 30],
-  });
-
-  const [lastChecked, setLastChecked] = useState(
-    new Date().toLocaleTimeString()
-  );
-
-  // =====================================================
-  // Load Dashboard Data from Backend
-  // =====================================================
-
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async () => {
     try {
-      const data = await fetchDashboard();
+      const [nextDashboard, nextInstallation, nextServices] = await Promise.all([
+        fetchDashboard(),
+        fetchInstallationStatus(),
+        fetchServices(),
+      ]);
+      setDashboard(nextDashboard);
+      setInstallation(nextInstallation);
+      setServices(nextServices);
+      if (nextInstallation.state === "installed") {
+        setAdGuard(await fetchAdGuardStatus().catch(() => null));
+      } else {
+        setAdGuard(null);
+      }
+      setLastChecked(new Date());
+      setError("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t("overview.loadError"));
+    }
+  }, [t]);
 
-      setDockerStats({
-        cpu: data.docker.cpu,
-        memory: data.docker.memory,
-        containers: data.docker.containers,
-        status: data.docker.status,
-      });
+  useEffect(() => {
+    const initialLoad = window.setTimeout(loadDashboard, 0);
+    const interval = window.setInterval(loadDashboard, 10_000);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.clearInterval(interval);
+    };
+  }, [loadDashboard]);
 
-      setDnsStats(prev => ({
-        ...prev,
-        status: data.dns.status,
-        resolver: data.dns.resolver,
-        dnssec: data.dns.dnssec,
-      }));
-
-      setLastChecked(new Date().toLocaleTimeString());
-    } catch (err) {
-      console.error("Dashboard load failed:", err);
+  async function restart(service: ServiceInfo["name"]) {
+    setBusyService(service);
+    try {
+      await serviceAction(service, "restart");
+      await loadDashboard();
+    } finally {
+      setBusyService("");
     }
   }
 
-  async function controlUnbound(action: "start" | "stop" | "restart") {
-    await serviceAction("unbound", action);
-    await loadDashboard();
-  }
+  const runningServices = services.filter((service) => service.status === "running").length;
+  const protectedState = installation?.state === "installed"
+    && dashboard?.dns.status === "healthy"
+    && adGuard?.upstream_ready === true;
+  const bindAddress = installation?.config
+    ? `${installation.config.dns_bind_address}:${installation.config.dns_port}`
+    : t("overview.notConfigured");
 
-  useEffect(() => {
-	const initialLoad = window.setTimeout(loadDashboard, 0);
-
-    const interval = setInterval(() => {
-      loadDashboard();
-    }, 10000);
-
-	return () => {
-	  clearTimeout(initialLoad);
-	  clearInterval(interval);
-	};
-  }, []);
-
-  // =====================================================
-  // Render
-  // =====================================================
+  const headline = useMemo(() => {
+    if (installation?.state === "deploying") return t("overview.headline.deploying");
+    if (protectedState) return t("overview.headline.protected");
+    if (installation?.state === "installed") return t("overview.headline.attention");
+    return t("overview.headline.waiting");
+  }, [installation?.state, protectedState, t]);
 
   return (
-    <div
-      style={{
-        padding: "40px 80px 60px 80px",
-        maxWidth: "1500px",
-        margin: "0 auto",
-      }}
-    >
-      <h1
-        style={{
-          fontSize: "28px",
-          fontWeight: 600,
-          marginBottom: "36px",
-          opacity: 0.85,
-        }}
-      >
-        System Overview
-      </h1>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2, minmax(520px, 1fr))",
-          gap: "48px",
-        }}
-      >
-        {/* DNS CARD */}
-        <div className="glass-card compact">
-          <CardHeader
-            title="DNS Engine"
-            status={dnsStats.status}
-            lastChecked={lastChecked}
-          />
-
-          <div style={{ marginBottom: "24px" }}>
-            <MiniTrend data={dnsStats.trend} />
-          </div>
-
-          <InfoRow label="Resolver" value={dnsStats.resolver} />
-          <InfoRow
-            label="DNSSEC"
-            value={dnsStats.dnssec ? "Enabled" : "Disabled"}
-          />
-
-          <div style={{ marginTop: "28px" }}>
-            <ServiceControls
-			  onStart={() => controlUnbound("start")}
-			  onStop={() => controlUnbound("stop")}
-			  onRestart={() => controlUnbound("restart")}
-            />
+    <div className="overview-page">
+      <section className={`overview-hero ${protectedState ? "healthy" : "attention"}`}>
+        <div className="hero-copy">
+          <span className="overview-eyebrow">ROOTGUARD CONTROL PLANE</span>
+          <h1>{headline}</h1>
+          <p>
+            {protectedState
+              ? t("overview.protectedText")
+              : t("overview.waitingText")}
+          </p>
+          <div className="hero-actions">
+            <Link className="overview-button primary" to={installation?.state === "installed" ? "/unbound" : "/setup"}>
+              {installation?.state === "installed" ? t("overview.configure") : t("overview.openSetup")}
+              <ArrowRight size={16} />
+            </Link>
+            <button className="overview-button ghost" type="button" onClick={loadDashboard}>
+              <RefreshCw size={15} />
+              {t("overview.refresh")}
+            </button>
           </div>
         </div>
-
-        {/* DOCKER CARD */}
-        <div className="glass-card compact">
-          <CardHeader
-            title="Docker Stack"
-            status={dockerStats.status}
-            lastChecked={lastChecked}
-          />
-
-          <InfoRow
-            label="Containers"
-            value={`${dockerStats.containers} Running`}
-            highlight
-          />
-
-          <MetricBlock
-            label="CPU Usage"
-            value={`${dockerStats.cpu}%`}
-          >
-            <ProgressBar value={dockerStats.cpu} color="#22c55e" />
-          </MetricBlock>
-
-          <MetricBlock
-            label="Memory Usage"
-            value={`${dockerStats.memory}%`}
-          >
-            <ProgressBar value={dockerStats.memory} color="#3b82f6" />
-          </MetricBlock>
-
+        <div className="protection-orbit" aria-label={protectedState ? t("overview.protected") : t("overview.unprotected")}>
+          <span className="orbit-ring outer" />
+          <span className="orbit-ring inner" />
+          <div className="orbit-core"><ShieldCheck size={44} /></div>
+          <strong>{protectedState ? "PROTECTED" : "CHECK"}</strong>
+          <small>{bindAddress}</small>
         </div>
+      </section>
+
+      {error && <div className="overview-error">{error}</div>}
+
+      <section className="overview-kpis">
+        <KpiCard icon={<Network />} label={t("overview.endpoint")} value={bindAddress} note={t("overview.endpointNote")} />
+        <KpiCard icon={<Server />} label={t("overview.services")} value={t("overview.servicesValue", { count: runningServices })} note={t("overview.servicesNote")} good={runningServices === 2} />
+        <KpiCard icon={<ShieldCheck />} label="DNSSEC" value={dashboard?.dns.dnssec ? t("overview.validationActive") : t("overview.unavailable")} note={t("overview.dnssecNote")} good={dashboard?.dns.dnssec === true} />
+        <KpiCard icon={<Filter />} label={t("overview.filterChain")} value={adGuard?.upstream_ready ? t("overview.connected") : t("overview.checkRequired")} note={t("overview.noFallback")} good={adGuard?.upstream_ready === true} />
+      </section>
+
+      <div className="overview-content-grid">
+        <section className="overview-panel dns-flow-panel">
+          <PanelHeading eyebrow={t("overview.dataFlow")} title={t("overview.flowTitle")} link="/adguard" linkLabel={t("overview.details")} />
+          <div className="dns-flow">
+            <FlowNode icon={<Globe2 />} title={t("overview.clients")} detail={bindAddress} state="neutral" />
+            <FlowArrow />
+            <FlowNode icon={<Filter />} title="AdGuard Home" detail={t("overview.filters")} state={serviceState(services, "adguard")} />
+            <FlowArrow />
+            <FlowNode icon={<ShieldCheck />} title="Unbound" detail={t("overview.recursive")} state={serviceState(services, "unbound")} />
+            <FlowArrow />
+            <FlowNode icon={<Network />} title={t("overview.hierarchy")} detail={t("overview.noExternal")} state={protectedState ? "running" : "neutral"} />
+          </div>
+          <div className="flow-footnote">
+            <Check size={15} />
+            {t("overview.privateAdmin")}
+          </div>
+        </section>
+
+        <section className="overview-panel service-panel">
+          <PanelHeading eyebrow={t("overview.runtime")} title={t("overview.dnsServices")} />
+          <div className="dashboard-services">
+            {services.map((service) => (
+              <article key={service.name}>
+                <span className={`service-light ${service.status}`} />
+                <div>
+                  <strong>{service.displayName}</strong>
+                  <p>{service.description}</p>
+                </div>
+                <button
+                  type="button"
+                  disabled={service.status !== "running" || busyService === service.name}
+                  onClick={() => restart(service.name)}
+                >
+                  <RefreshCw size={14} className={busyService === service.name ? "spinning" : ""} />
+                  {t("common.restart")}
+                </button>
+              </article>
+            ))}
+          </div>
+          <div className="panel-footer">
+            <span>{t("overview.lastChecked", { time: lastChecked ? lastChecked.toLocaleTimeString(locale) : "–" })}</span>
+            <Link to="/setup">{t("overview.manageStack")} <ArrowRight size={14} /></Link>
+          </div>
+        </section>
       </div>
     </div>
   );
 }
 
-// =====================================================
-// Helper Components
-// =====================================================
-
-function InfoRow({
-  label,
-  value,
-  highlight,
-}: {
+function KpiCard({ icon, label, value, note, good }: {
+  icon: React.ReactNode;
   label: string;
   value: string;
-  highlight?: boolean;
+  note: string;
+  good?: boolean;
 }) {
   return (
-    <div style={{ marginBottom: "18px" }}>
-      <div style={{ fontSize: "13px", opacity: 0.6 }}>
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: highlight ? "20px" : "16px",
-          fontWeight: highlight ? 600 : 500,
-        }}
-      >
-        {value}
-      </div>
+    <article className="overview-kpi">
+      <span className={`kpi-icon ${good ? "good" : ""}`}>{icon}</span>
+      <div><small>{label}</small><strong>{value}</strong><p>{note}</p></div>
+    </article>
+  );
+}
+
+function PanelHeading({ eyebrow, title, link, linkLabel }: { eyebrow: string; title: string; link?: string; linkLabel?: string }) {
+  return (
+    <div className="overview-panel-heading">
+      <div><span>{eyebrow}</span><h2>{title}</h2></div>
+      {link && <Link to={link}>{linkLabel} <ArrowRight size={14} /></Link>}
     </div>
   );
 }
 
-function MetricBlock({
-  label,
-  value,
-  children,
-}: {
-  label: string;
-  value: string;
-  children: React.ReactNode;
+function FlowNode({ icon, title, detail, state }: {
+  icon: React.ReactNode;
+  title: string;
+  detail: string;
+  state: "running" | "stopped" | "neutral";
 }) {
-  return (
-    <div style={{ marginBottom: "22px" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: "14px",
-          marginBottom: "8px",
-        }}
-      >
-        <span style={{ opacity: 0.7 }}>{label}</span>
-        <span style={{ fontWeight: 600 }}>{value}</span>
-      </div>
-      {children}
-    </div>
-  );
+  return <div className={`flow-node ${state}`}><span>{icon}</span><strong>{title}</strong><small>{detail}</small></div>;
+}
+
+function FlowArrow() {
+  return <div className="flow-arrow"><span /><ArrowRight size={15} /></div>;
+}
+
+function serviceState(services: ServiceInfo[], name: ServiceInfo["name"]) {
+  return services.find((service) => service.name === name)?.status ?? "stopped";
 }

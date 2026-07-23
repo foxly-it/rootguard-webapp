@@ -6,29 +6,50 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import Header from "./Header";
+import { useI18n } from "../i18n";
 
 interface Props {
   children: ReactNode;
 }
 
 export default function SidebarLayout({ children }: Props) {
+  const { t } = useI18n();
 
   return (
     <>
+      <a className="rg-skip-link" href="#main-content">{t("accessibility.skipToContent")}</a>
       <Header />
 
       <div className="layout">
 
         {/* ================= Sidebar ================= */}
-        <aside className="sidebar">
+        <nav className="sidebar" aria-label={t("accessibility.mainNavigation")}>
 
           <NavLink
-            to="/"
+            to="/dashboard"
             className={({ isActive }) =>
               isActive ? "nav-item active" : "nav-item"
             }
           >
-            Overview
+            {t("nav.overview")}
+          </NavLink>
+
+          <NavLink
+            to="/setup"
+            className={({ isActive }) =>
+              isActive ? "nav-item active" : "nav-item"
+            }
+          >
+            {t("nav.setup")}
+          </NavLink>
+
+          <NavLink
+            to="/stack"
+            className={({ isActive }) =>
+              isActive ? "nav-item active" : "nav-item"
+            }
+          >
+            {t("nav.stack")}
           </NavLink>
 
           <NavLink
@@ -37,7 +58,7 @@ export default function SidebarLayout({ children }: Props) {
               isActive ? "nav-item active" : "nav-item"
             }
           >
-            Unbound Settings
+            {t("nav.unbound")}
           </NavLink>
 
           <NavLink
@@ -46,13 +67,13 @@ export default function SidebarLayout({ children }: Props) {
               isActive ? "nav-item active" : "nav-item"
             }
           >
-            AdGuard Home
+            {t("nav.adguard")}
           </NavLink>
 
-        </aside>
+        </nav>
 
         {/* ================= Main ================= */}
-        <main className="main">
+        <main className="main" id="main-content" tabIndex={-1}>
           {children}
         </main>
 

@@ -1,0 +1,365 @@
+.guided-zones-panel {
+  margin-top: 20px;
+  padding: 28px;
+}
+
+.guided-heading {
+  align-items: flex-start;
+}
+
+.guided-heading h2 {
+  margin-bottom: 5px;
+}
+
+.guided-heading .secondary-action,
+.wizard-actions button,
+.guided-review button,
+.guided-preview > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.guided-flow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0;
+  padding: 14px 17px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  color: #6f849e;
+  background: rgba(5, 17, 30, 0.28);
+}
+
+.guided-flow > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.73rem;
+  font-weight: 700;
+}
+
+.guided-flow > span.active {
+  color: #bdf9f0;
+}
+
+.guided-flow i {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  font-size: 0.68rem;
+  font-style: normal;
+}
+
+.guided-flow .active i {
+  color: #06251f;
+  border-color: #5eead4;
+  background: #5eead4;
+}
+
+.zone-wizard {
+  margin: 18px 0;
+  padding: 23px;
+  border: 1px solid rgba(103, 232, 249, 0.15);
+  border-radius: 15px;
+  background: rgba(8, 27, 44, 0.58);
+}
+
+.wizard-intro {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  margin-bottom: 19px;
+  color: #67e8f9;
+}
+
+.wizard-intro strong,
+.wizard-intro small {
+  display: block;
+}
+
+.wizard-intro strong {
+  color: #e5f3ff;
+}
+
+.wizard-intro small {
+  margin-top: 3px;
+  color: #8fa4bd;
+}
+
+.guided-field,
+.guided-record label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.guided-field {
+  max-width: 440px;
+}
+
+.guided-field > span,
+.guided-record label > span {
+  color: #9cafc5;
+  font-size: 0.72rem;
+  font-weight: 720;
+}
+
+.guided-field small {
+  margin-left: 5px;
+  color: #6f849e;
+  font-weight: 500;
+}
+
+.guided-field input,
+.guided-record input,
+.guided-record select {
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  outline: none;
+  color: #e5f3ff;
+  background: rgba(4, 15, 27, 0.68);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.guided-field input:focus,
+.guided-record input:focus,
+.guided-record select:focus {
+  border-color: rgba(103, 232, 249, 0.55);
+}
+
+.record-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  margin: 23px 0 10px;
+}
+
+.record-heading small {
+  color: #70859e;
+}
+
+.guided-records {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guided-record {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.7fr) 90px minmax(180px, 1.35fr) 100px 36px;
+  gap: 9px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.record-delete {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid rgba(248, 113, 113, 0.14);
+  border-radius: 8px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.record-delete:disabled {
+  opacity: 0.3;
+}
+
+.wizard-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.wizard-actions .text-action {
+  color: #91a6bf;
+  background: transparent;
+}
+
+.guided-zone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.guided-zone-list article {
+  display: grid;
+  grid-template-columns: minmax(175px, 0.55fr) minmax(0, 1.2fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 12px;
+  background: rgba(9, 24, 40, 0.44);
+}
+
+.zone-name {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.zone-name > span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  color: #5eead4;
+  background: rgba(20, 184, 166, 0.1);
+}
+
+.zone-name strong,
+.zone-name small {
+  display: block;
+}
+
+.zone-name small {
+  margin-top: 3px;
+  color: #778ca5;
+  font-size: 0.68rem;
+}
+
+.zone-record-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.zone-record-summary code {
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: #a9bdd3;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.68rem;
+}
+
+.zone-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.zone-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 9px;
+  border: 0;
+  color: #91a6bf;
+  background: transparent;
+  font-size: 0.7rem;
+}
+
+.guided-empty {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  padding: 21px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #71869e;
+}
+
+.guided-empty strong {
+  color: #a9bdd3;
+}
+
+.guided-empty p {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+}
+
+.guided-review,
+.guided-preview {
+  margin-top: 15px;
+  padding: 17px;
+  border: 1px solid rgba(103, 232, 249, 0.16);
+  border-radius: 12px;
+  background: rgba(6, 30, 44, 0.45);
+}
+
+.guided-review {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.guided-review strong,
+.guided-review small {
+  display: block;
+}
+
+.guided-review small {
+  margin-top: 4px;
+  color: #8298b1;
+}
+
+.guided-preview-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #99f6e4;
+}
+
+.guided-preview pre {
+  max-height: 300px;
+  margin: 14px 0;
+  overflow: auto;
+  padding: 15px;
+  border-radius: 9px;
+  color: #b9cee3;
+  background: rgba(2, 11, 20, 0.7);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 900px) {
+  .guided-record {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .guided-record .record-value {
+    grid-column: 1 / -1;
+  }
+  .guided-zone-list article {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .guided-heading,
+  .guided-review,
+  .wizard-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .guided-flow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .guided-flow > svg {
+    display: none;
+  }
+  .guided-record {
+    grid-template-columns: 1fr;
+  }
+  .guided-record .record-value {
+    grid-column: auto;
+  }
+}

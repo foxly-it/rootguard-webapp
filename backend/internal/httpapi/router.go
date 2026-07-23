@@ -157,6 +157,42 @@ func NewRouter(core *coreclient.Client) http.Handler {
 
 	})
 
+	mux.HandleFunc("GET /api/installation", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleInstallationStatus(w, r, core)
+	})
+
+	mux.HandleFunc("POST /api/installation/preflight", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleInstallationPreflight(w, r, core)
+	})
+
+	mux.HandleFunc("POST /api/installation/deploy", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleInstallationDeploy(w, r, core)
+	})
+
+	mux.HandleFunc("GET /api/updates", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleUpdateStatus(w, r, core)
+	})
+
+	mux.HandleFunc("POST /api/updates/check", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleUpdateCheck(w, r, core)
+	})
+
+	mux.HandleFunc("POST /api/updates/{name}", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleUpdateService(w, r, core)
+	})
+
+	mux.HandleFunc("GET /api/control-plane-updates", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleControlPlaneUpdateStatus(w, r, core)
+	})
+
+	mux.HandleFunc("POST /api/control-plane-updates/check", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleControlPlaneUpdateCheck(w, r, core)
+	})
+
+	mux.HandleFunc("POST /api/control-plane-updates/install", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleControlPlaneUpdateInstall(w, r, core)
+	})
+
 	mux.HandleFunc("/api/unbound/settings", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -166,6 +202,10 @@ func NewRouter(core *coreclient.Client) http.Handler {
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
+	})
+
+	mux.HandleFunc("GET /api/unbound/config", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleGetUnboundConfiguration(w, r, core)
 	})
 
 	mux.HandleFunc("POST /api/unbound/preview", func(w http.ResponseWriter, r *http.Request) {
@@ -224,6 +264,8 @@ func NewRouter(core *coreclient.Client) http.Handler {
 		api.HandleBootstrapAdGuard(w, r, core)
 	})
 
+	mux.Handle("/adguard-ui/", core.AdGuardUIHandler())
+
 	// ==================================================
 	// Static Frontend (SPA)
 	// ==================================================
@@ -261,5 +303,5 @@ func NewRouter(core *coreclient.Client) http.Handler {
 
 	})
 
-	return mux
+	return RequireSameOriginWrites(mux)
 }
