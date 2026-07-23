@@ -102,6 +102,7 @@ export interface UnboundForwardZone {
   name: string;
   servers: string[];
   forward_first: boolean;
+  allow_unsigned: boolean;
 }
 
 export interface UnboundForwardTargetCheck {

@@ -74,9 +74,10 @@ type UnboundSettings struct {
 }
 
 type UnboundForwardZone struct {
-	Name         string   `json:"name"`
-	Servers      []string `json:"servers"`
-	ForwardFirst bool     `json:"forward_first"`
+	Name          string   `json:"name"`
+	Servers       []string `json:"servers"`
+	ForwardFirst  bool     `json:"forward_first"`
+	AllowUnsigned bool     `json:"allow_unsigned"`
 }
 
 type UnboundForwardTargetCheck struct {

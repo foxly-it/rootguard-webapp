@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Check, CirclePlus, Network, Pencil, Plus, ShieldAlert, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, CirclePlus, Network, Pencil, Plus, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
 import {
   checkUnboundForwardTargets,
   fetchUnboundSettings,
@@ -21,6 +21,7 @@ const emptyZone = (): UnboundForwardZone => ({
   name: "corp.example.",
   servers: ["192.168.1.53"],
   forward_first: false,
+  allow_unsigned: false,
 });
 
 export default function UnboundForwardZones({
@@ -217,10 +218,16 @@ export default function UnboundForwardZones({
               </div>
             ))}
           </div>
-          <label className="forward-fallback">
-            <input type="checkbox" checked={draft.forward_first} onChange={(event) => setDraft({ ...draft, forward_first: event.target.checked })} />
-            <span><strong>{t("forward.fallback")}</strong><small>{t("forward.fallbackHelp")}</small></span>
-          </label>
+          <div className="forward-options">
+            <label className="forward-fallback">
+              <input type="checkbox" checked={draft.forward_first} onChange={(event) => setDraft({ ...draft, forward_first: event.target.checked })} />
+              <span><strong>{t("forward.fallback")}</strong><small>{t("forward.fallbackHelp")}</small></span>
+            </label>
+            <label className="forward-fallback forward-unsigned">
+              <input type="checkbox" checked={draft.allow_unsigned} onChange={(event) => setDraft({ ...draft, allow_unsigned: event.target.checked })} />
+              <span><strong>{t("forward.allowUnsigned")}</strong><small>{t("forward.allowUnsignedHelp")}</small></span>
+            </label>
+          </div>
           <div className="wizard-actions">
             <button type="button" onClick={saveDraft}>{editing === null ? t("forward.addDraft") : t("forward.applyEdit")}</button>
           </div>
@@ -233,7 +240,10 @@ export default function UnboundForwardZones({
           <article key={zone.name}>
             <div className="forward-zone-name"><span><Network size={15} /></span><div><strong>{zone.name}</strong><small>{t("forward.targetCount", { count: zone.servers.length })}</small></div></div>
             <div className="forward-targets">{zone.servers.map((server, serverIndex) => <code key={server}><span>{serverIndex + 1}</span>{server}</code>)}</div>
-            <div className={`forward-policy ${zone.forward_first ? "fallback" : "strict"}`}><ShieldAlert size={14} />{zone.forward_first ? t("forward.policyFallback") : t("forward.policyStrict")}</div>
+            <div className="forward-policies">
+              <div className={`forward-policy ${zone.forward_first ? "fallback" : "strict"}`}><ShieldAlert size={14} />{zone.forward_first ? t("forward.policyFallback") : t("forward.policyStrict")}</div>
+              <div className={`forward-policy ${zone.allow_unsigned ? "unsigned" : "validated"}`}>{zone.allow_unsigned ? <ShieldAlert size={14} /> : <ShieldCheck size={14} />}{zone.allow_unsigned ? t("forward.policyUnsigned") : t("forward.policyDNSSEC")}</div>
+            </div>
             <div className="zone-actions"><button type="button" onClick={() => editZone(index)}><Pencil size={14} /> {t("common.edit")}</button><button type="button" onClick={() => removeZone(index)}><Trash2 size={14} /> {t("common.remove")}</button></div>
           </article>
         ))}
@@ -265,7 +275,13 @@ export default function UnboundForwardZones({
 }
 
 function normalizeSettings(settings: UnboundSettings): UnboundSettings {
-  return { ...settings, forward_zones: settings.forward_zones ?? [] };
+  return {
+    ...settings,
+    forward_zones: (settings.forward_zones ?? []).map((zone) => ({
+      ...zone,
+      allow_unsigned: zone.allow_unsigned ?? false,
+    })),
+  };
 }
 
 function sameSettings(left: UnboundSettings, right: UnboundSettings) {
@@ -277,7 +293,7 @@ function normalizeForwardZone(zone: UnboundForwardZone, t: (key: string, values?
   if (zone.servers.length === 0) throw new Error(t("forward.validation.serverRequired"));
   const servers = zone.servers.map((server) => normalizeIPAddress(server, t));
   if (new Set(servers).size !== servers.length) throw new Error(t("forward.validation.duplicateServer"));
-  return { name, servers, forward_first: zone.forward_first };
+  return { name, servers, forward_first: zone.forward_first, allow_unsigned: zone.allow_unsigned };
 }
 
 function normalizeZoneName(value: string, t: (key: string) => string) {
@@ -352,8 +368,13 @@ function validateLimits(zones: UnboundForwardZone[], t: (key: string, values?: R
 }
 
 function forwardingSection(config: string) {
-  const start = config.indexOf("# Conditional forwarding:");
-  return start < 0 ? "" : config.slice(start);
+  const forwardStart = config.indexOf("# Conditional forwarding:");
+  if (forwardStart < 0) return "";
+  const splitDNSLines = config
+    .split("\n")
+    .filter((line) => line.includes("# Split DNS:") || line.trimStart().startsWith("domain-insecure:"));
+  const splitDNS = splitDNSLines.length > 0 ? `server:\n${splitDNSLines.join("\n")}\n\n` : "";
+  return splitDNS + config.slice(forwardStart);
 }
 
 function errorMessage(error: unknown, fallback: string) {
