@@ -1,6 +1,6 @@
 # 🛡 RootGuard WebApp
 
-![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
+![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)
 ![Backend](https://img.shields.io/badge/backend-Go-00ADD8?logo=go)
 ![Frontend](https://img.shields.io/badge/frontend-React-61DAFB?logo=react)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker)
@@ -50,6 +50,16 @@ RootGuard Core.
 The Unbound expert mode manages a separate, versioned custom include with
 policy checks, full `unbound-checkconf` validation, contextual directive help,
 completion suggestions, advice, and automatic rollback.
+
+The guided Unbound page also displays the actual base, managed, and custom
+configuration read from the running resolver. Dashboard status is derived from
+the installation, containers, DNSSEC, and protected AdGuard upstream rather
+than synthetic metrics.
+
+The **Setup** page is the AIO entry point. It accepts only the DNS bind address
+and port, displays Core's non-mutating preflight checks, starts the managed DNS
+data plane, and polls the persistent deployment progress. The WebApp still has
+no Docker socket and contains no container specification logic.
 
 ---
 
@@ -142,9 +152,9 @@ RootGuard WebApp follows strict design constraints:
 Planned development stages:
 
 - DNS filtering and client-management UI
-- Stack deployment interface  
+- Extended installer recovery and host-network diagnostics
 - Live container monitoring  
-- Session-based authentication and role management
+- Role management and optional external identity providers
 - Multi-architecture image builds  
 - GitHub Actions CI/CD  
 - GHCR image distribution  
@@ -153,7 +163,8 @@ Planned development stages:
 
 ## 📜 License
 
-RootGuard WebApp is licensed under the Apache License 2.0.
+RootGuard WebApp is licensed under the GNU Affero General Public License v3.0
+or later (AGPL-3.0-or-later).
 
 See the `LICENSE` file for full details.
 

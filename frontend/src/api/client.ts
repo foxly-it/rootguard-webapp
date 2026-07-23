@@ -17,6 +17,10 @@ async function request<T>(
     ...options,
   });
 
+  if (response.status === 401) {
+    window.dispatchEvent(new Event("rootguard:unauthorized"));
+  }
+
   if (!response.ok) {
     const detail = (await response.text()).trim();
     throw new Error(detail || `API Error: ${response.status}`);
@@ -45,6 +49,17 @@ export interface DashboardResponse {
 
 export async function fetchDashboard() {
   return request<DashboardResponse>("/api/dashboard");
+}
+
+export interface ServiceInfo {
+  name: "adguard" | "unbound";
+  displayName: string;
+  description: string;
+  status: "running" | "stopped";
+}
+
+export async function fetchServices(): Promise<ServiceInfo[]> {
+  return request<ServiceInfo[]>("/api/services");
 }
 
 // =====================================================
@@ -84,6 +99,17 @@ export interface UnboundSettings {
 
 export async function fetchUnboundSettings(): Promise<UnboundSettings> {
   return request<UnboundSettings>("/api/unbound/settings");
+}
+
+export interface UnboundActiveConfiguration {
+  base_config: string;
+  managed_config: string;
+  custom_config: string;
+  checked_at: string;
+}
+
+export async function fetchUnboundActiveConfiguration(): Promise<UnboundActiveConfiguration> {
+  return request<UnboundActiveConfiguration>("/api/unbound/config");
 }
 
 export async function updateUnboundSettings(
@@ -245,4 +271,120 @@ export async function fetchAdGuardStatus(): Promise<AdGuardStatus> {
 
 export async function bootstrapAdGuard(): Promise<AdGuardStatus> {
   return request<AdGuardStatus>("/api/adguard/bootstrap", { method: "POST" });
+}
+
+// =====================================================
+// AIO installation
+// =====================================================
+
+export interface InstallationConfig {
+  dns_bind_address: string;
+  dns_port: number;
+}
+
+export interface InstallationCheck {
+  id: string;
+  ok: boolean;
+  message: string;
+}
+
+export interface InstallationPreflight {
+  ready: boolean;
+  config: InstallationConfig;
+  checks: InstallationCheck[];
+}
+
+export interface InstallationStep {
+  id: string;
+  status: "pending" | "running" | "done" | "failed";
+  message: string;
+}
+
+export interface InstallationStatus {
+  state: "not_installed" | "deploying" | "installed" | "failed";
+  config?: InstallationConfig;
+  steps: InstallationStep[];
+  error?: string;
+  updated_at: string;
+}
+
+export async function fetchInstallationStatus(): Promise<InstallationStatus> {
+  return request<InstallationStatus>("/api/installation");
+}
+
+export async function preflightInstallation(
+  config: InstallationConfig
+): Promise<InstallationPreflight> {
+  return request<InstallationPreflight>("/api/installation/preflight", {
+    method: "POST",
+    body: JSON.stringify(config),
+  });
+}
+
+export async function deployInstallation(
+  config: InstallationConfig
+): Promise<InstallationStatus> {
+  return request<InstallationStatus>("/api/installation/deploy", {
+    method: "POST",
+    body: JSON.stringify(config),
+  });
+}
+
+// =====================================================
+// Stack updates
+// =====================================================
+
+export interface UpdateServiceStatus {
+  name: "adguard" | "unbound";
+  display_name: string;
+  current_image?: string;
+  target_image: string;
+  current_id?: string;
+  candidate_id?: string;
+  update_available: boolean;
+  checked_at?: string;
+  error?: string;
+}
+
+export interface UpdateStatus {
+  state: "idle" | "checking" | "updating" | "failed";
+  active_service?: string;
+  message: string;
+  services: UpdateServiceStatus[];
+  updated_at: string;
+}
+
+export async function fetchUpdateStatus(): Promise<UpdateStatus> {
+  return request<UpdateStatus>("/api/updates");
+}
+
+export async function checkUpdates(): Promise<UpdateStatus> {
+  return request<UpdateStatus>("/api/updates/check", { method: "POST" });
+}
+
+export async function installServiceUpdate(service: "adguard" | "unbound"): Promise<UpdateStatus> {
+  return request<UpdateStatus>(`/api/updates/${service}`, { method: "POST" });
+}
+
+export interface ControlPlaneUpdateServiceStatus extends Omit<UpdateServiceStatus, "name"> {
+  name: "core" | "webapp";
+}
+
+export interface ControlPlaneUpdateStatus {
+  state: "idle" | "checking" | "updating" | "failed";
+  message: string;
+  services: ControlPlaneUpdateServiceStatus[];
+  updated_at: string;
+}
+
+export async function fetchControlPlaneUpdateStatus(): Promise<ControlPlaneUpdateStatus> {
+  return request<ControlPlaneUpdateStatus>("/api/control-plane-updates");
+}
+
+export async function checkControlPlaneUpdates(): Promise<ControlPlaneUpdateStatus> {
+  return request<ControlPlaneUpdateStatus>("/api/control-plane-updates/check", { method: "POST" });
+}
+
+export async function installControlPlaneUpdates(): Promise<ControlPlaneUpdateStatus> {
+  return request<ControlPlaneUpdateStatus>("/api/control-plane-updates/install", { method: "POST" });
 }

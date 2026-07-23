@@ -12,6 +12,7 @@
 // =====================================================
 
 import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { getVersion } from "../services/api";
 
 // RootGuard shield icon (SVG, icon-only)
@@ -20,6 +21,9 @@ import logo from "../assets/rootguard-icon.svg";
 // Inline SVG icon components
 import GithubIcon from "../components/icons/GithubIcon";
 import DocsIcon from "../components/icons/DocsIcon";
+import { useI18n } from "../i18n";
+import { LogOut } from "lucide-react";
+import { useAuth } from "../auth";
 
 interface VersionData {
   version: string;
@@ -28,6 +32,10 @@ interface VersionData {
 
 export default function Header() {
   const [version, setVersion] = useState<VersionData | null>(null);
+  const { locale, locales, setLocale, t } = useI18n();
+  const { username, logout } = useAuth();
+  const location = useLocation();
+  const pageName = pageTitle(location.pathname, t);
 
   // -----------------------------------------------------
   // Fetch backend version metadata on mount
@@ -59,14 +67,16 @@ export default function Header() {
           Left: Branding
          ===================================================== */}
       <div className="rg-header-left">
+        <Link className="rg-brand" to="/dashboard" aria-label="RootGuard Dashboard">
         <img
           src={logo}
-          alt="RootGuard"
+          alt=""
           className="rg-logo"
-          aria-label="RootGuard Logo"
         />
-
-        <h2 className="rg-title">RootGuard</h2>
+          <span className="rg-title">Root<span>Guard</span></span>
+        </Link>
+        <span className="rg-title-divider" aria-hidden="true" />
+        <span className="rg-page-name">{pageName}</span>
       </div>
 
       {/* =====================================================
@@ -80,23 +90,35 @@ export default function Header() {
           </span>
         )}
 
+        <label className="rg-language">
+          <span>{t("language.label")}</span>
+          <select value={locale} onChange={(event) => setLocale(event.target.value)} aria-label={t("language.label")}>
+            {locales.map((item) => <option value={item.code} key={item.code}>{item.label}</option>)}
+          </select>
+        </label>
+
+        <button className="rg-logout" type="button" onClick={() => void logout()} title={t("login.signOut")}>
+          <LogOut />
+          <span>{username}</span>
+        </button>
+
         <a
           href="https://github.com/foxly-it/rootguard-webapp"
           target="_blank"
           rel="noreferrer"
           className="rg-link"
-          aria-label="GitHub Repository"
+          aria-label={t("header.github")}
         >
           <GithubIcon />
           <span>GitHub</span>
         </a>
 
         <a
-          href="https://foxly.de"
+          href="https://rootguard.foxly.de/docs.html"
           target="_blank"
           rel="noreferrer"
           className="rg-link"
-          aria-label="Documentation"
+          aria-label={t("header.docs")}
         >
           <DocsIcon />
           <span>Docs</span>
@@ -105,4 +127,12 @@ export default function Header() {
       </div>
     </header>
   );
+}
+
+function pageTitle(pathname: string, t: (key: string) => string) {
+  if (pathname.startsWith("/setup")) return t("nav.setup");
+  if (pathname.startsWith("/stack")) return t("nav.stack");
+  if (pathname.startsWith("/unbound")) return t("nav.unbound");
+  if (pathname.startsWith("/adguard")) return t("nav.adguard");
+  return t("nav.overview");
 }

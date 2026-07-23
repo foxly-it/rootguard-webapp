@@ -64,17 +64,19 @@ func main() {
 		getEnv("ROOTGUARD_CORE_URL", "http://rootguard-core:8081"),
 		coreToken,
 	)
-	router := httpapi.RequireBasicAuth(
-		httpapi.NewRouter(core),
+	sessionAuth := httpapi.NewSessionAuth(
 		getEnv("ROOTGUARD_ADMIN_USER", "admin"),
 		adminPassword,
+		12*time.Hour,
+		getEnv("ROOTGUARD_SESSION_FILE", "/var/lib/rootguard-sessions/sessions.json"),
 	)
+	router := httpapi.RequireSameOriginWrites(sessionAuth.Handler(httpapi.NewRouter(core)))
 
 	server := &http.Server{
 		Addr:              ":" + port,
 		Handler:           router,
 		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      10 * time.Second,
+		WriteTimeout:      30 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}

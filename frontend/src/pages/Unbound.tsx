@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
+import { Activity, Code2, MapPinned, SlidersHorizontal } from "lucide-react";
 import {
   fetchUnboundDiagnostics,
   fetchUnboundHistory,
   fetchUnboundAdvice,
+  fetchUnboundActiveConfiguration,
   fetchUnboundPresets,
   fetchUnboundSettings,
   previewUnboundSettings,
@@ -10,42 +12,53 @@ import {
   updateUnboundSettings,
   type UnboundDiagnosticReport,
   type UnboundAdvice,
+  type UnboundActiveConfiguration,
   type UnboundHistoryEntry,
   type UnboundPreset,
   type UnboundPreview,
   type UnboundSettings,
 } from "../api/client";
 import "../styles/unbound.css";
+import "../styles/unbound-live.css";
+import "../styles/unbound-polish.css";
+import "../styles/unbound-structure.css";
 import UnboundExpertEditor from "../components/UnboundExpertEditor";
+import UnboundGuidedZones from "../components/UnboundGuidedZones";
+import { useI18n } from "../i18n";
 
 export default function Unbound() {
+  const { t, formatDate } = useI18n();
   const [settings, setSettings] = useState<UnboundSettings | null>(null);
   const [history, setHistory] = useState<UnboundHistoryEntry[]>([]);
   const [preview, setPreview] = useState<UnboundPreview | null>(null);
   const [diagnostics, setDiagnostics] = useState<UnboundDiagnosticReport | null>(null);
   const [presets, setPresets] = useState<UnboundPreset[]>([]);
   const [advice, setAdvice] = useState<UnboundAdvice | null>(null);
+  const [liveConfig, setLiveConfig] = useState<UnboundActiveConfiguration | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [activeSection, setActiveSection] = useState<UnboundSection>("overview");
 
   const reload = useCallback(async () => {
-    const [loadedSettings, loadedHistory, loadedPresets] = await Promise.all([
+    const [loadedSettings, loadedHistory, loadedPresets, loadedConfig] = await Promise.all([
       fetchUnboundSettings(),
       fetchUnboundHistory(),
       fetchUnboundPresets(),
+      fetchUnboundActiveConfiguration(),
     ]);
     setSettings(loadedSettings);
     setHistory(loadedHistory);
     setPresets(loadedPresets);
+    setLiveConfig(loadedConfig);
   }, []);
 
   useEffect(() => {
     reload()
-      .catch((err: unknown) => setError(errorMessage(err, "Unbound konnte nicht geladen werden")))
+      .catch((err: unknown) => setError(errorMessage(err, t("unbound.loadError"))))
       .finally(() => setLoading(false));
-  }, [reload]);
+  }, [reload, t]);
 
   useEffect(() => {
     if (!settings) return;
@@ -62,9 +75,9 @@ export default function Unbound() {
     try {
       setSettings(preset.settings);
       setPreview(await previewUnboundSettings(preset.settings));
-      setMessage(`${preset.name} wurde als Entwurf geladen. Prüfe die Vorschau, bevor du es aktivierst.`);
+      setMessage(t("unbound.presetLoaded", { name: presetText(preset.id, "name", t, preset.name) }));
     } catch (err) {
-      setError(errorMessage(err, "Preset konnte nicht geladen werden"));
+      setError(errorMessage(err, t("unbound.presetError")));
     } finally {
       setBusy(false);
     }
@@ -78,7 +91,7 @@ export default function Unbound() {
     try {
       setPreview(await previewUnboundSettings(settings));
     } catch (err) {
-      setError(errorMessage(err, "Vorschau konnte nicht erstellt werden"));
+      setError(errorMessage(err, t("unbound.previewError")));
     } finally {
       setBusy(false);
     }
@@ -93,9 +106,9 @@ export default function Unbound() {
       setSettings(updated);
       setPreview(null);
       await reload();
-      setMessage("Konfiguration wurde validiert, versioniert und erfolgreich aktiviert.");
+      setMessage(t("unbound.activated"));
     } catch (err) {
-      setError(errorMessage(err, "Konfiguration konnte nicht aktiviert werden"));
+      setError(errorMessage(err, t("unbound.activateError")));
     } finally {
       setBusy(false);
     }
@@ -109,9 +122,9 @@ export default function Unbound() {
       setSettings(await restoreUnboundVersion(entry.id));
       setPreview(null);
       await reload();
-      setMessage("Die ausgewählte Version wurde validiert und wiederhergestellt.");
+      setMessage(t("unbound.restored"));
     } catch (err) {
-      setError(errorMessage(err, "Version konnte nicht wiederhergestellt werden"));
+      setError(errorMessage(err, t("unbound.restoreError")));
     } finally {
       setBusy(false);
     }
@@ -124,7 +137,7 @@ export default function Unbound() {
     try {
       setDiagnostics(await fetchUnboundDiagnostics());
     } catch (err) {
-      setError(errorMessage(err, "Diagnose konnte nicht ausgeführt werden"));
+      setError(errorMessage(err, t("unbound.diagnosticError")));
     } finally {
       setBusy(false);
     }
@@ -135,114 +148,162 @@ export default function Unbound() {
     setError("");
   }
 
-  if (loading) return <Page><p>Unbound-Einstellungen werden geladen…</p></Page>;
+  if (loading) return <Page><p>{t("unbound.loading")}</p></Page>;
   if (!settings) return <Page><p className="error-message">{error}</p></Page>;
+  const activePreset = presets.find((preset) => settingsEqual(settings, preset.settings));
 
   return (
     <Page>
       <div className="unbound-heading">
         <div>
-          <p className="unbound-eyebrow">RECURSIVE DNS</p>
-          <h1>Unbound Configuration</h1>
-          <p>Änderungen werden vor der Aktivierung im Resolver geprüft. RootGuard hält bis zu 20 funktionierende Versionen für einen sicheren Rollback bereit.</p>
+          <p className="unbound-eyebrow">{t("unbound.pageEyebrow")}</p>
+          <h1>{t("unbound.title")}</h1>
+          <p>{t("unbound.intro")}</p>
         </div>
-        <button className="secondary-action" type="button" disabled={busy} onClick={runDiagnostics}>
-          {busy ? "Bitte warten…" : "Diagnose ausführen"}
-        </button>
+        <div className="unbound-heading-status" aria-label={t("unbound.resolverStatus")}>
+          <i aria-hidden="true" />
+          <span><small>{t("unbound.resolverStatus")}</small><strong>{liveConfig ? t("unbound.statusActive") : t("unbound.statusUnknown")}</strong></span>
+        </div>
       </div>
 
-      {message && <div className="feedback success">{message}</div>}
-      {error && <div className="feedback error">{error}</div>}
+      <UnboundTabs active={activeSection} onChange={setActiveSection} t={t} />
 
-      <section className="glass-card preset-panel">
-        <div className="panel-heading"><div><p className="unbound-eyebrow">VORDEFINIERTE WERTE</p><h2>Passendes Betriebsprofil wählen</h2></div><span>Wird niemals direkt aktiviert</span></div>
-        <div className="preset-grid">{presets.map((preset) => (
-          <button key={preset.id} className={`preset-card ${settingsEqual(settings, preset.settings) ? "selected" : ""}`} type="button" disabled={busy} onClick={() => selectPreset(preset)}>
-            <span className="preset-name">{preset.name}</span>
-            <small>{preset.description}</small>
-            <em>{preset.best_for}</em>
+      <div className="unbound-feedback" aria-live="polite" aria-atomic="true">
+        {message && <div className="feedback success">{message}</div>}
+        {error && <div className="feedback error" role="alert">{error}</div>}
+      </div>
+
+      <section id="unbound-panel-overview" role="tabpanel" aria-labelledby="unbound-tab-overview" hidden={activeSection !== "overview"} tabIndex={0}>
+        <div className="unbound-summary-grid">
+          <SummaryCard label={t("unbound.summary.status")} value={liveConfig ? t("unbound.statusActive") : t("unbound.statusUnknown")} detail={t("unbound.summary.statusHelp")} state={liveConfig ? "healthy" : "neutral"} />
+          <SummaryCard label={t("unbound.summary.profile")} value={activePreset ? presetText(activePreset.id, "name", t, activePreset.name) : t("unbound.summary.custom")} detail={t("unbound.summary.profileHelp")} />
+          <SummaryCard label={t("unbound.summary.history")} value={t("unbound.summary.versionCount", { count: history.length })} detail={history[0] ? formatDate(history[0].created_at) : t("unbound.noHistoryShort")} />
+          <SummaryCard label={t("unbound.summary.customConfig")} value={liveConfig?.custom_config ? t("common.active") : t("unbound.summary.none")} detail={t("unbound.summary.customHelp")} />
+        </div>
+        <section className="glass-card compact overview-diagnostics">
+          <div>
+            <p className="unbound-eyebrow">{t("unbound.overviewHealth")}</p>
+            <h2>{t("unbound.liveDiagnostics")}</h2>
+            <p className="muted-copy">{t("unbound.diagnosticsHelp")}</p>
+          </div>
+          <button className="secondary-action" type="button" disabled={busy} onClick={runDiagnostics}>
+            {busy ? t("unbound.wait") : t("unbound.diagnose")}
           </button>
-        ))}</div>
+          {diagnostics && <div className="diagnostic-results"><div className={`overall-status ${diagnostics.healthy ? "healthy" : "failed"}`}>{diagnostics.healthy ? t("unbound.allPassed") : t("unbound.someFailed")}</div>{diagnostics.checks.map((check) => <DiagnosticRow key={check.name} {...check} label={fieldLabel(check.name, t)} />)}<small className="timestamp">{t("unbound.checked", { date: formatDate(diagnostics.checked_at) })}</small></div>}
+        </section>
       </section>
 
-      <div className="unbound-grid">
-        <form onSubmit={createPreview} className="glass-card compact settings-panel">
-          <h2>Resolver-Einstellungen</h2>
-          <Toggle label="QNAME-Minimierung" badge="Empfohlen · Datenschutz" description="Übermittelt autoritativen Nameservern nur den jeweils notwendigen Teil eines Namens. Deaktivieren verbessert die Kompatibilität nur bei seltenen fehlerhaften DNS-Zonen." checked={settings.qname_minimisation} onChange={(value) => setSettings({ ...settings, qname_minimisation: value })} />
-          <Toggle label="Beliebte Einträge vorladen" badge="Empfohlen · Performance" description="Aktualisiert häufig verwendete Cache-Einträge kurz vor ihrem Ablauf. Das senkt Latenzen, erzeugt aber wenige zusätzliche Hintergrundabfragen." checked={settings.prefetch} onChange={(value) => setSettings({ ...settings, prefetch: value })} />
-          <Toggle label="Abgelaufene Einträge bereitstellen" badge="Empfohlen · Verfügbarkeit" description="Hält bekannte Domains bei vorübergehenden externen DNS-Störungen verfügbar. Unbound aktualisiert sie weiter im Hintergrund." checked={settings.serve_expired} onChange={(value) => setSettings({ ...settings, serve_expired: value })} />
+      <section id="unbound-panel-resolver" role="tabpanel" aria-labelledby="unbound-tab-resolver" hidden={activeSection !== "resolver"} tabIndex={0}>
+        <section className="glass-card preset-panel">
+          <div className="panel-heading"><div><p className="unbound-eyebrow">{t("unbound.presets")}</p><h2>{t("unbound.chooseProfile")}</h2></div><span>{t("unbound.draftOnly")}</span></div>
+          <div className="preset-grid">{presets.map((preset) => (
+            <button key={preset.id} className={`preset-card ${settingsEqual(settings, preset.settings) ? "selected" : ""}`} type="button" aria-pressed={settingsEqual(settings, preset.settings)} disabled={busy} onClick={() => selectPreset(preset)}>
+              <span className="preset-name">{presetText(preset.id, "name", t, preset.name)}</span>
+              <small>{presetText(preset.id, "description", t, preset.description)}</small>
+              <em>{presetText(preset.id, "bestFor", t, preset.best_for)}</em>
+            </button>
+          ))}</div>
+        </section>
 
-          <div className="number-grid">
-            <NumberField label="Minimum TTL" description="Untergrenze in Sekunden. Hohe Werte können DNS-Änderungen verzögern." recommended="0–300" value={settings.cache_min_ttl} min={0} max={3600} onChange={(value) => setSettings({ ...settings, cache_min_ttl: value })} />
-            <NumberField label="Maximum TTL" description="Längste Cache-Dauer. Größere Werte sparen Anfragen, halten Antworten aber länger." recommended="3.600–172.800" value={settings.cache_max_ttl} min={60} max={604800} onChange={(value) => setSettings({ ...settings, cache_max_ttl: value })} />
-            <NumberField label="Resolver-Threads" description="Parallel arbeitende Resolver-Threads. Mehr ist nur auf passenden CPUs sinnvoll." recommended="2–4" value={settings.threads} min={1} max={32} onChange={(value) => setSettings({ ...settings, threads: value })} />
-          </div>
-
-          <button type="submit" disabled={busy}>Änderungen prüfen</button>
-        </form>
-
-        <div className="side-stack">
+        <div className="unbound-grid">
+          <form onSubmit={createPreview} className="glass-card compact settings-panel">
+            <h2>{t("unbound.resolverSettings")}</h2>
+            <p className="muted-copy">{t("unbound.resolverSettingsHelp")}</p>
+            <Toggle directive="qname-minimisation" label={t("unbound.qname")} badge={t("unbound.qnameBadge")} description={t("unbound.qnameHelp")} checked={settings.qname_minimisation} onChange={(value) => setSettings({ ...settings, qname_minimisation: value })} />
+            <Toggle directive="prefetch" label={t("unbound.prefetch")} badge={t("unbound.prefetchBadge")} description={t("unbound.prefetchHelp")} checked={settings.prefetch} onChange={(value) => setSettings({ ...settings, prefetch: value })} />
+            <Toggle directive="serve-expired" label={t("unbound.expired")} badge={t("unbound.expiredBadge")} description={t("unbound.expiredHelp")} checked={settings.serve_expired} onChange={(value) => setSettings({ ...settings, serve_expired: value })} />
+            <details className="advanced-settings">
+              <summary><span>{t("unbound.cachePerformance")}</span><small>{t("unbound.cachePerformanceHelp")}</small></summary>
+              <div className="number-grid">
+                <NumberField directive="cache-min-ttl" label="Minimum TTL" description={t("unbound.minTtlHelp")} recommended={t("unbound.recommended", { value: "0–300" })} value={settings.cache_min_ttl} min={0} max={3600} onChange={(value) => setSettings({ ...settings, cache_min_ttl: value })} />
+                <NumberField directive="cache-max-ttl" label="Maximum TTL" description={t("unbound.maxTtlHelp")} recommended={t("unbound.recommended", { value: "3.600–172.800" })} value={settings.cache_max_ttl} min={60} max={604800} onChange={(value) => setSettings({ ...settings, cache_max_ttl: value })} />
+                <NumberField directive="num-threads" label={t("unbound.threads")} description={t("unbound.threadsHelp")} recommended={t("unbound.recommended", { value: "2–4" })} value={settings.threads} min={1} max={32} onChange={(value) => setSettings({ ...settings, threads: value })} />
+              </div>
+            </details>
+            <button type="submit" disabled={busy}>{t("unbound.review")}</button>
+          </form>
           <section className="glass-card compact side-panel advisor-panel">
-            <div className="advisor-heading"><h2>RootGuard Advisor</h2>{advice && <span className={`advice-state ${advice.status}`}>{adviceLabel(advice.status)}</span>}</div>
-            {!advice && <p className="muted-copy">Der Entwurf wird automatisch auf Datenschutz, Verfügbarkeit, Cache-Effizienz und Ressourcenverbrauch geprüft.</p>}
-            {advice?.recommendations.map((item) => <article className={`advice-item ${item.severity}`} key={item.id}><strong>{item.title}</strong><p>{item.description}</p><small>{item.suggestion}</small></article>)}
-          </section>
-          <section className="glass-card compact side-panel">
-            <h2>Live-Diagnose</h2>
-            {!diagnostics && <p className="muted-copy">Prüft den laufenden Resolver: Konfiguration, rekursive Auflösung und DNSSEC.</p>}
-            {diagnostics && <><div className={`overall-status ${diagnostics.healthy ? "healthy" : "failed"}`}>{diagnostics.healthy ? "Alle Prüfungen bestanden" : "Mindestens eine Prüfung fehlgeschlagen"}</div>{diagnostics.checks.map((check) => <DiagnosticRow key={check.name} {...check} />)}<small className="timestamp">Geprüft: {formatDate(diagnostics.checked_at)}</small></>}
+            <div className="advisor-heading"><h2>RootGuard Advisor</h2>{advice && <span className={`advice-state ${advice.status}`}>{t(`unbound.advice.${advice.status}`)}</span>}</div>
+            {!advice && <p className="muted-copy">{t("unbound.advisorHelp")}</p>}
+            {advice?.recommendations.map((item) => <article className={`advice-item ${item.severity}`} key={item.id}><strong>{adviceText(item.id, "title", t, item.title)}</strong><p>{adviceText(item.id, "description", t, item.description)}</p><small>{adviceText(item.id, "suggestion", t, item.suggestion)}</small></article>)}
           </section>
         </div>
-      </div>
-
-      {preview && (
-        <section className="glass-card preview-panel">
-          <div className="panel-heading"><div><p className="unbound-eyebrow">VORSCHAU</p><h2>Konfigurationsänderungen</h2></div><button className="text-action" type="button" onClick={() => setPreview(null)}>Schließen</button></div>
-          {!preview.changed ? <p>Die vorgeschlagene Konfiguration entspricht bereits dem aktiven Stand.</p> : (
-            <>
-              <div className="change-list">{preview.changes.map((change) => <div key={change.field}><code>{fieldLabel(change.field)}</code><span>{change.before}</span><b>→</b><span>{change.after}</span></div>)}</div>
-              <details><summary>Generierte Unbound-Konfiguration anzeigen</summary><pre>{preview.rendered_config}</pre></details>
-              <button type="button" disabled={busy} onClick={applyPreview}>{busy ? "Aktiviere…" : "Validieren und aktivieren"}</button>
-            </>
-          )}
-        </section>
-      )}
-
-      <UnboundExpertEditor version={history[0]?.id} onActivated={reload} />
-
-      <section className="glass-card history-panel">
-        <div className="panel-heading"><div><p className="unbound-eyebrow">ROLLBACK</p><h2>Konfigurationsverlauf</h2></div><span>{history.length} / 20 Versionen</span></div>
-        {history.length === 0 ? <p className="muted-copy">Nach der ersten Änderung erscheinen hier die Ausgangs- und die neue Version.</p> : (
-          <div className="history-list">{history.map((entry, index) => (
-            <article key={entry.id}>
-              <div><strong>{index === 0 ? "Aktuellste Version" : "Gesicherte Version"}</strong><span>{formatDate(entry.created_at)}</span><small>Threads {entry.settings.threads} · TTL {entry.settings.cache_min_ttl}–{entry.settings.cache_max_ttl}{entry.custom_config ? " · Custom Config" : ""}</small></div>
-              <button className="secondary-action" type="button" disabled={busy || index === 0} onClick={() => restore(entry)}>{index === 0 ? "Aktiv" : "Wiederherstellen"}</button>
-            </article>
-          ))}</div>
+        {preview && (
+          <section className="glass-card preview-panel" aria-live="polite">
+            <div className="panel-heading"><div><p className="unbound-eyebrow">{t("unbound.preview")}</p><h2>{t("unbound.changes")}</h2></div><button className="text-action" type="button" onClick={() => setPreview(null)}>{t("common.close")}</button></div>
+            {!preview.changed ? <p>{t("unbound.noChanges")}</p> : <><div className="change-list">{preview.changes.map((change) => <div key={change.field}><code>{fieldLabel(change.field, t)}</code><span>{change.before}</span><b aria-hidden="true">→</b><span>{change.after}</span></div>)}</div><details><summary>{t("unbound.showGenerated")}</summary><pre>{preview.rendered_config}</pre></details><button type="button" disabled={busy} onClick={applyPreview}>{busy ? t("unbound.activating") : t("unbound.validateActivate")}</button></>}
+          </section>
         )}
+      </section>
+
+      <section id="unbound-panel-zones" role="tabpanel" aria-labelledby="unbound-tab-zones" hidden={activeSection !== "zones"} tabIndex={0}>
+        <div className="section-introduction"><p className="unbound-eyebrow">{t("unbound.localDnsEyebrow")}</p><h2>{t("unbound.localDnsTitle")}</h2><p>{t("unbound.localDnsHelp")}</p></div>
+        <UnboundGuidedZones version={history[0]?.id} onActivated={reload} />
+      </section>
+
+      <section id="unbound-panel-advanced" role="tabpanel" aria-labelledby="unbound-tab-advanced" hidden={activeSection !== "advanced"} tabIndex={0}>
+        <div className="section-introduction"><p className="unbound-eyebrow">{t("unbound.advancedEyebrow")}</p><h2>{t("unbound.advancedTitle")}</h2><p>{t("unbound.advancedHelp")}</p></div>
+        {liveConfig && (
+          <section className="glass-card live-config-panel">
+            <div className="panel-heading"><div><p className="unbound-eyebrow">LIVE · READ ONLY</p><h2>{t("unbound.liveTitle")}</h2><p className="muted-copy">{t("unbound.liveHelp")}</p></div><span className="live-config-state"><i /> {t("common.active")} · {formatDate(liveConfig.checked_at)}</span></div>
+            <div className="config-file-label"><span>50-rootguard.conf</span><code>/etc/unbound/unbound.d/50-rootguard.conf</code></div>
+            <details className="live-config-disclosure"><summary>{t("unbound.managedConfig")}</summary><pre>{liveConfig.managed_config}</pre></details>
+            <div className="live-config-details"><details><summary>{t("unbound.baseConfig")}</summary><pre>{liveConfig.base_config}</pre></details><details><summary>{t("unbound.customConfig")}</summary><pre>{liveConfig.custom_config || t("unbound.noCustom")}</pre></details></div>
+          </section>
+        )}
+        <UnboundExpertEditor version={history[0]?.id} onActivated={reload} />
+        <section className="glass-card history-panel">
+          <details className="history-disclosure">
+            <summary><span><span className="unbound-eyebrow">ROLLBACK</span><strong>{t("unbound.history")}</strong></span><em>{t("unbound.versions", { count: history.length })}</em></summary>
+            {history.length === 0 ? <p className="muted-copy">{t("unbound.noHistory")}</p> : <div className="history-list">{history.map((entry, index) => <article key={entry.id}><div><strong>{index === 0 ? t("unbound.latest") : t("unbound.saved")}</strong><span>{formatDate(entry.created_at)}</span><small>Threads {entry.settings.threads} · TTL {entry.settings.cache_min_ttl}–{entry.settings.cache_max_ttl}{entry.custom_config ? " · Custom Config" : ""}</small></div><button className="secondary-action" type="button" disabled={busy || index === 0} onClick={() => restore(entry)}>{index === 0 ? t("common.active") : t("unbound.restore")}</button></article>)}</div>}
+          </details>
+        </section>
       </section>
     </Page>
   );
+}
+
+type UnboundSection = "overview" | "resolver" | "zones" | "advanced";
+
+function UnboundTabs({ active, onChange, t }: { active: UnboundSection; onChange: (section: UnboundSection) => void; t: (key: string) => string }) {
+  const tabs: Array<{ id: UnboundSection; icon: React.ReactNode }> = [
+    { id: "overview", icon: <Activity aria-hidden="true" /> },
+    { id: "resolver", icon: <SlidersHorizontal aria-hidden="true" /> },
+    { id: "zones", icon: <MapPinned aria-hidden="true" /> },
+    { id: "advanced", icon: <Code2 aria-hidden="true" /> },
+  ];
+  function handleKeys(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    onChange(tabs[next].id);
+    event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+  }
+  return <div className="unbound-tabs" role="tablist" aria-label={t("unbound.navigation")}>{tabs.map((tab, index) => <button id={`unbound-tab-${tab.id}`} role="tab" type="button" key={tab.id} aria-selected={active === tab.id} aria-controls={`unbound-panel-${tab.id}`} tabIndex={active === tab.id ? 0 : -1} onKeyDown={(event) => handleKeys(event, index)} onClick={() => onChange(tab.id)}>{tab.icon}<span>{t(`unbound.tab.${tab.id}`)}</span></button>)}</div>;
+}
+
+function SummaryCard({ label, value, detail, state = "neutral" }: { label: string; value: string; detail: string; state?: "healthy" | "neutral" }) {
+  return <article className="unbound-summary-card"><span>{label}</span><strong><i className={state} aria-hidden="true" />{value}</strong><small>{detail}</small></article>;
 }
 
 function Page({ children }: { children: React.ReactNode }) {
   return <div className="unbound-page">{children}</div>;
 }
 
-function Toggle({ label, badge, description, checked, onChange }: { label: string; badge?: string; description: string; checked: boolean; onChange: (value: boolean) => void }) {
-  return <label className="toggle-row"><span><span className="setting-title"><strong>{label}</strong>{badge && <em className="setting-badge">{badge}</em>}</span><small>{description}</small></span><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} /></label>;
+function Toggle({ directive, label, badge, description, checked, onChange }: { directive: string; label: string; badge?: string; description: string; checked: boolean; onChange: (value: boolean) => void }) {
+  return <label className="toggle-row"><span><span className="setting-title"><strong>{label}</strong>{badge && <em className="setting-badge">{badge}</em>}</span><code className="setting-directive">{directive}: {checked ? "yes" : "no"}</code><small>{description}</small></span><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} /></label>;
 }
 
-function NumberField({ label, description, recommended, value, min, max, onChange }: { label: string; description: string; recommended: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
-  return <label className="number-field"><strong>{label}</strong><input type="number" value={value} min={min} max={max} onChange={(event) => onChange(Number(event.target.value))} /><small>{description}</small><em>Empfohlen: {recommended}</em></label>;
+function NumberField({ directive, label, description, recommended, value, min, max, onChange }: { directive: string; label: string; description: string; recommended: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
+  return <label className="number-field"><strong>{label}</strong><code className="setting-directive">{directive}: {value}</code><input type="number" value={value} min={min} max={max} onChange={(event) => onChange(Number(event.target.value))} /><small>{description}</small><em>{recommended}</em></label>;
 }
 
-function DiagnosticRow({ name, passed, detail }: { name: string; passed: boolean; detail: string }) {
-  return <div className="diagnostic-row"><span className={passed ? "check-pass" : "check-fail"}>{passed ? "✓" : "!"}</span><div><strong>{fieldLabel(name)}</strong><small>{detail}</small></div></div>;
+function DiagnosticRow({ passed, detail, label }: { name: string; passed: boolean; detail: string; label: string }) {
+  return <div className="diagnostic-row"><span className={passed ? "check-pass" : "check-fail"}>{passed ? "✓" : "!"}</span><div><strong>{label}</strong><small>{detail}</small></div></div>;
 }
 
-function fieldLabel(field: string) {
-  const labels: Record<string, string> = { qname_minimisation: "QNAME-Minimierung", prefetch: "Prefetch", serve_expired: "Serve Expired", cache_min_ttl: "Minimum TTL", cache_max_ttl: "Maximum TTL", threads: "Resolver-Threads", configuration: "Konfiguration", resolution: "DNS-Auflösung", dnssec: "DNSSEC" };
+function fieldLabel(field: string, t: (key: string) => string) {
+  const labels: Record<string, string> = { qname_minimisation: t("unbound.qname"), prefetch: "Prefetch", serve_expired: "Serve Expired", cache_min_ttl: "Minimum TTL", cache_max_ttl: "Maximum TTL", threads: t("unbound.threads"), configuration: t("unbound.field.configuration"), resolution: t("unbound.field.resolution"), dnssec: "DNSSEC" };
   return labels[field] ?? field;
 }
 
@@ -255,13 +316,16 @@ function settingsEqual(left: UnboundSettings, right: UnboundSettings) {
     && left.threads === right.threads;
 }
 
-function adviceLabel(status: string) {
-  const labels: Record<string, string> = { optimized: "Ausgewogen", suggestions: "Hinweise", review: "Prüfen" };
-  return labels[status] ?? status;
+function presetText(id: string, field: "name" | "description" | "bestFor", t: (key: string) => string, fallback: string) {
+  const key = `unbound.preset.${id}.${field}`;
+  const translated = t(key);
+  return translated === key ? fallback : translated;
 }
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "medium" }).format(new Date(value));
+function adviceText(id: string, field: "title" | "description" | "suggestion", t: (key: string) => string, fallback: string) {
+  const key = `unbound.recommendation.${id}.${field}`;
+  const translated = t(key);
+  return translated === key ? fallback : translated;
 }
 
 function errorMessage(error: unknown, fallback: string) {

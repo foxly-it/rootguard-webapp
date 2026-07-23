@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -68,6 +70,13 @@ type UnboundSettings struct {
 	CacheMinTTL       int  `json:"cache_min_ttl"`
 	CacheMaxTTL       int  `json:"cache_max_ttl"`
 	Threads           int  `json:"threads"`
+}
+
+type UnboundActiveConfiguration struct {
+	BaseConfig    string    `json:"base_config"`
+	ManagedConfig string    `json:"managed_config"`
+	CustomConfig  string    `json:"custom_config"`
+	CheckedAt     time.Time `json:"checked_at"`
 }
 
 type UnboundChange struct {
@@ -160,6 +169,64 @@ type AdGuardStatus struct {
 	UpstreamReady bool   `json:"upstream_ready"`
 }
 
+type InstallationConfig struct {
+	DNSBindAddress string `json:"dns_bind_address"`
+	DNSPort        int    `json:"dns_port"`
+}
+
+type InstallationCheck struct {
+	ID      string `json:"id"`
+	OK      bool   `json:"ok"`
+	Message string `json:"message"`
+}
+
+type InstallationPreflight struct {
+	Ready  bool                `json:"ready"`
+	Config InstallationConfig  `json:"config"`
+	Checks []InstallationCheck `json:"checks"`
+}
+
+type InstallationStep struct {
+	ID      string `json:"id"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
+
+type InstallationStatus struct {
+	State     string              `json:"state"`
+	Config    *InstallationConfig `json:"config,omitempty"`
+	Steps     []InstallationStep  `json:"steps"`
+	Error     string              `json:"error,omitempty"`
+	UpdatedAt time.Time           `json:"updated_at"`
+}
+
+type UpdateServiceStatus struct {
+	Name            string    `json:"name"`
+	DisplayName     string    `json:"display_name"`
+	CurrentImage    string    `json:"current_image,omitempty"`
+	TargetImage     string    `json:"target_image"`
+	CurrentID       string    `json:"current_id,omitempty"`
+	CandidateID     string    `json:"candidate_id,omitempty"`
+	UpdateAvailable bool      `json:"update_available"`
+	CheckedAt       time.Time `json:"checked_at,omitempty"`
+	Error           string    `json:"error,omitempty"`
+}
+
+type UpdateStatus struct {
+	State         string                `json:"state"`
+	ActiveService string                `json:"active_service,omitempty"`
+	Message       string                `json:"message"`
+	Services      []UpdateServiceStatus `json:"services"`
+	UpdatedAt     time.Time             `json:"updated_at"`
+}
+
+type ControlPlaneUpdateStatus struct {
+	State     string                `json:"state"`
+	Message   string                `json:"message"`
+	Services  []UpdateServiceStatus `json:"services"`
+	UpdatedAt time.Time             `json:"updated_at"`
+}
+
 func (c *Client) Dashboard(ctx context.Context) (Dashboard, error) {
 	var result Dashboard
 	err := c.do(ctx, http.MethodGet, "/api/dashboard", nil, &result)
@@ -187,6 +254,12 @@ func (c *Client) ServiceAction(ctx context.Context, service, action string) (Ser
 func (c *Client) UnboundSettings(ctx context.Context) (UnboundSettings, error) {
 	var result UnboundSettings
 	err := c.do(ctx, http.MethodGet, "/api/unbound/settings", nil, &result)
+	return result, err
+}
+
+func (c *Client) UnboundActiveConfiguration(ctx context.Context) (UnboundActiveConfiguration, error) {
+	var result UnboundActiveConfiguration
+	err := c.do(ctx, http.MethodGet, "/api/unbound/config", nil, &result)
 	return result, err
 }
 
@@ -265,6 +338,86 @@ func (c *Client) AdGuardStatus(ctx context.Context) (AdGuardStatus, error) {
 func (c *Client) BootstrapAdGuard(ctx context.Context) (AdGuardStatus, error) {
 	var result AdGuardStatus
 	err := c.do(ctx, http.MethodPost, "/api/adguard/bootstrap", nil, &result)
+	return result, err
+}
+
+func (c *Client) AdGuardUIHandler() http.Handler {
+	target, err := url.Parse(c.baseURL)
+	if err != nil {
+		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "invalid RootGuard Core URL", http.StatusInternalServerError)
+		})
+	}
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	originalDirector := proxy.Director
+	proxy.Director = func(request *http.Request) {
+		originalDirector(request)
+		path := strings.TrimPrefix(request.URL.Path, "/adguard-ui")
+		if path == "" {
+			path = "/"
+		}
+		request.URL.Path = "/api/adguard/ui" + path
+		request.URL.RawPath = ""
+		request.Host = target.Host
+		request.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	proxy.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, proxyErr error) {
+		http.Error(w, fmt.Sprintf("RootGuard AdGuard UI proxy: %v", proxyErr), http.StatusBadGateway)
+	}
+	return proxy
+}
+
+func (c *Client) InstallationStatus(ctx context.Context) (InstallationStatus, error) {
+	var result InstallationStatus
+	err := c.do(ctx, http.MethodGet, "/api/installation", nil, &result)
+	return result, err
+}
+
+func (c *Client) InstallationPreflight(ctx context.Context, config InstallationConfig) (InstallationPreflight, error) {
+	var result InstallationPreflight
+	err := c.do(ctx, http.MethodPost, "/api/installation/preflight", config, &result)
+	return result, err
+}
+
+func (c *Client) DeployInstallation(ctx context.Context, config InstallationConfig) (InstallationStatus, error) {
+	var result InstallationStatus
+	err := c.do(ctx, http.MethodPost, "/api/installation/deploy", config, &result)
+	return result, err
+}
+
+func (c *Client) UpdateStatus(ctx context.Context) (UpdateStatus, error) {
+	var result UpdateStatus
+	err := c.do(ctx, http.MethodGet, "/api/updates", nil, &result)
+	return result, err
+}
+
+func (c *Client) CheckUpdates(ctx context.Context) (UpdateStatus, error) {
+	var result UpdateStatus
+	err := c.do(ctx, http.MethodPost, "/api/updates/check", nil, &result)
+	return result, err
+}
+
+func (c *Client) UpdateService(ctx context.Context, service string) (UpdateStatus, error) {
+	var result UpdateStatus
+	err := c.do(ctx, http.MethodPost, "/api/updates/"+service, nil, &result)
+	return result, err
+}
+
+func (c *Client) ControlPlaneUpdateStatus(ctx context.Context) (ControlPlaneUpdateStatus, error) {
+	var result ControlPlaneUpdateStatus
+	err := c.do(ctx, http.MethodGet, "/api/control-plane-updates", nil, &result)
+	return result, err
+}
+
+func (c *Client) CheckControlPlaneUpdates(ctx context.Context) (ControlPlaneUpdateStatus, error) {
+	var result ControlPlaneUpdateStatus
+	err := c.do(ctx, http.MethodPost, "/api/control-plane-updates/check", nil, &result)
+	return result, err
+}
+
+func (c *Client) InstallControlPlaneUpdates(ctx context.Context) (ControlPlaneUpdateStatus, error) {
+	var result ControlPlaneUpdateStatus
+	err := c.do(ctx, http.MethodPost, "/api/control-plane-updates/install", nil, &result)
 	return result, err
 }
 

@@ -17,6 +17,15 @@ func HandleGetUnboundSettings(w http.ResponseWriter, r *http.Request, core *core
 	writeJSON(w, http.StatusOK, settings)
 }
 
+func HandleGetUnboundConfiguration(w http.ResponseWriter, r *http.Request, core *coreclient.Client) {
+	configuration, err := core.UnboundActiveConfiguration(r.Context())
+	if err != nil {
+		writeCoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, configuration)
+}
+
 func HandlePutUnboundSettings(w http.ResponseWriter, r *http.Request, core *coreclient.Client) {
 	defer r.Body.Close()
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10))
