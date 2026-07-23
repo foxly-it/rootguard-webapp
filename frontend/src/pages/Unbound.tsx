@@ -23,6 +23,7 @@ import "../styles/unbound-live.css";
 import "../styles/unbound-polish.css";
 import "../styles/unbound-structure.css";
 import UnboundExpertEditor from "../components/UnboundExpertEditor";
+import UnboundForwardZones from "../components/UnboundForwardZones";
 import UnboundGuidedZones from "../components/UnboundGuidedZones";
 import { useI18n } from "../i18n";
 
@@ -48,7 +49,7 @@ export default function Unbound() {
       fetchUnboundPresets(),
       fetchUnboundActiveConfiguration(),
     ]);
-    setSettings(loadedSettings);
+    setSettings({ ...loadedSettings, forward_zones: loadedSettings.forward_zones ?? [] });
     setHistory(loadedHistory);
     setPresets(loadedPresets);
     setLiveConfig(loadedConfig);
@@ -69,12 +70,13 @@ export default function Unbound() {
   }, [settings]);
 
   async function selectPreset(preset: UnboundPreset) {
-    if (busy) return;
+    if (busy || !settings) return;
     setBusy(true);
     clearFeedback();
     try {
-      setSettings(preset.settings);
-      setPreview(await previewUnboundSettings(preset.settings));
+      const proposed = { ...preset.settings, forward_zones: settings.forward_zones };
+      setSettings(proposed);
+      setPreview(await previewUnboundSettings(proposed));
       setMessage(t("unbound.presetLoaded", { name: presetText(preset.id, "name", t, preset.name) }));
     } catch (err) {
       setError(errorMessage(err, t("unbound.presetError")));
@@ -239,6 +241,7 @@ export default function Unbound() {
       <section id="unbound-panel-zones" role="tabpanel" aria-labelledby="unbound-tab-zones" hidden={activeSection !== "zones"} tabIndex={0}>
         <div className="section-introduction"><p className="unbound-eyebrow">{t("unbound.localDnsEyebrow")}</p><h2>{t("unbound.localDnsTitle")}</h2><p>{t("unbound.localDnsHelp")}</p></div>
         <UnboundGuidedZones version={history[0]?.id} onActivated={reload} />
+        <UnboundForwardZones version={history[0]?.id} onActivated={reload} />
       </section>
 
       <section id="unbound-panel-advanced" role="tabpanel" aria-labelledby="unbound-tab-advanced" hidden={activeSection !== "advanced"} tabIndex={0}>
@@ -255,7 +258,7 @@ export default function Unbound() {
         <section className="glass-card history-panel">
           <details className="history-disclosure">
             <summary><span><span className="unbound-eyebrow">ROLLBACK</span><strong>{t("unbound.history")}</strong></span><em>{t("unbound.versions", { count: history.length })}</em></summary>
-            {history.length === 0 ? <p className="muted-copy">{t("unbound.noHistory")}</p> : <div className="history-list">{history.map((entry, index) => <article key={entry.id}><div><strong>{index === 0 ? t("unbound.latest") : t("unbound.saved")}</strong><span>{formatDate(entry.created_at)}</span><small>Threads {entry.settings.threads} · TTL {entry.settings.cache_min_ttl}–{entry.settings.cache_max_ttl}{entry.custom_config ? " · Custom Config" : ""}</small></div><button className="secondary-action" type="button" disabled={busy || index === 0} onClick={() => restore(entry)}>{index === 0 ? t("common.active") : t("unbound.restore")}</button></article>)}</div>}
+            {history.length === 0 ? <p className="muted-copy">{t("unbound.noHistory")}</p> : <div className="history-list">{history.map((entry, index) => <article key={entry.id}><div><strong>{index === 0 ? t("unbound.latest") : t("unbound.saved")}</strong><span>{formatDate(entry.created_at)}</span><small>Threads {entry.settings.threads} · TTL {entry.settings.cache_min_ttl}–{entry.settings.cache_max_ttl} · {t("forward.historyCount", { count: entry.settings.forward_zones?.length ?? 0 })}{entry.custom_config ? " · Custom Config" : ""}</small></div><button className="secondary-action" type="button" disabled={busy || index === 0} onClick={() => restore(entry)}>{index === 0 ? t("common.active") : t("unbound.restore")}</button></article>)}</div>}
           </details>
         </section>
       </section>
@@ -303,7 +306,7 @@ function DiagnosticRow({ passed, detail, label }: { name: string; passed: boolea
 }
 
 function fieldLabel(field: string, t: (key: string) => string) {
-  const labels: Record<string, string> = { qname_minimisation: t("unbound.qname"), prefetch: "Prefetch", serve_expired: "Serve Expired", cache_min_ttl: "Minimum TTL", cache_max_ttl: "Maximum TTL", threads: t("unbound.threads"), configuration: t("unbound.field.configuration"), resolution: t("unbound.field.resolution"), dnssec: "DNSSEC" };
+  const labels: Record<string, string> = { qname_minimisation: t("unbound.qname"), prefetch: "Prefetch", serve_expired: "Serve Expired", cache_min_ttl: "Minimum TTL", cache_max_ttl: "Maximum TTL", threads: t("unbound.threads"), forward_zones: t("forward.title"), configuration: t("unbound.field.configuration"), resolution: t("unbound.field.resolution"), dnssec: "DNSSEC" };
   return labels[field] ?? field;
 }
 

@@ -64,12 +64,26 @@ type ServiceActionResponse struct {
 }
 
 type UnboundSettings struct {
-	QnameMinimisation bool `json:"qname_minimisation"`
-	Prefetch          bool `json:"prefetch"`
-	ServeExpired      bool `json:"serve_expired"`
-	CacheMinTTL       int  `json:"cache_min_ttl"`
-	CacheMaxTTL       int  `json:"cache_max_ttl"`
-	Threads           int  `json:"threads"`
+	QnameMinimisation bool                 `json:"qname_minimisation"`
+	Prefetch          bool                 `json:"prefetch"`
+	ServeExpired      bool                 `json:"serve_expired"`
+	CacheMinTTL       int                  `json:"cache_min_ttl"`
+	CacheMaxTTL       int                  `json:"cache_max_ttl"`
+	Threads           int                  `json:"threads"`
+	ForwardZones      []UnboundForwardZone `json:"forward_zones"`
+}
+
+type UnboundForwardZone struct {
+	Name         string   `json:"name"`
+	Servers      []string `json:"servers"`
+	ForwardFirst bool     `json:"forward_first"`
+}
+
+type UnboundForwardTargetCheck struct {
+	Zone      string `json:"zone"`
+	Address   string `json:"address"`
+	Reachable bool   `json:"reachable"`
+	Detail    string `json:"detail"`
 }
 
 type UnboundActiveConfiguration struct {
@@ -302,6 +316,12 @@ func (c *Client) UnboundPresets(ctx context.Context) ([]UnboundPreset, error) {
 func (c *Client) UnboundAdvice(ctx context.Context, settings UnboundSettings) (UnboundAdvice, error) {
 	var result UnboundAdvice
 	err := c.do(ctx, http.MethodPost, "/api/unbound/advice", settings, &result)
+	return result, err
+}
+
+func (c *Client) CheckUnboundForwardTargets(ctx context.Context, zones []UnboundForwardZone) ([]UnboundForwardTargetCheck, error) {
+	var result []UnboundForwardTargetCheck
+	err := c.do(ctx, http.MethodPost, "/api/unbound/forward-check", map[string]any{"zones": zones}, &result)
 	return result, err
 }
 
