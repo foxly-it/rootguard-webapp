@@ -111,6 +111,27 @@ func HandleUnboundAdvice(w http.ResponseWriter, r *http.Request, core *coreclien
 	writeJSON(w, http.StatusOK, advice)
 }
 
+type forwardCheckRequest struct {
+	Zones []coreclient.UnboundForwardZone `json:"zones"`
+}
+
+func HandleUnboundForwardCheck(w http.ResponseWriter, r *http.Request, core *coreclient.Client) {
+	defer r.Body.Close()
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10))
+	decoder.DisallowUnknownFields()
+	var request forwardCheckRequest
+	if err := decoder.Decode(&request); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	checks, err := core.CheckUnboundForwardTargets(r.Context(), request.Zones)
+	if err != nil {
+		writeCoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, checks)
+}
+
 type customConfigRequest struct {
 	Content string `json:"content"`
 }

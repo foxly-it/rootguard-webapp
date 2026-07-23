@@ -95,6 +95,20 @@ export interface UnboundSettings {
   cache_min_ttl: number;
   cache_max_ttl: number;
   threads: number;
+  forward_zones: UnboundForwardZone[];
+}
+
+export interface UnboundForwardZone {
+  name: string;
+  servers: string[];
+  forward_first: boolean;
+}
+
+export interface UnboundForwardTargetCheck {
+  zone: string;
+  address: string;
+  reachable: boolean;
+  detail: string;
 }
 
 export async function fetchUnboundSettings(): Promise<UnboundSettings> {
@@ -204,6 +218,13 @@ export async function fetchUnboundAdvice(settings: UnboundSettings): Promise<Unb
   return request<UnboundAdvice>("/api/unbound/advice", {
     method: "POST",
     body: JSON.stringify(settings),
+  });
+}
+
+export async function checkUnboundForwardTargets(zones: UnboundForwardZone[]): Promise<UnboundForwardTargetCheck[]> {
+  return request<UnboundForwardTargetCheck[]>("/api/unbound/forward-check", {
+    method: "POST",
+    body: JSON.stringify({ zones }),
   });
 }
 
