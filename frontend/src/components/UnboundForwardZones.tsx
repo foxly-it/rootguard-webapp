@@ -22,6 +22,7 @@ const emptyZone = (): UnboundForwardZone => ({
   servers: ["192.168.1.53"],
   forward_first: false,
   allow_unsigned: false,
+  allow_private_addresses: false,
 });
 
 export default function UnboundForwardZones({
@@ -227,6 +228,10 @@ export default function UnboundForwardZones({
               <input type="checkbox" checked={draft.allow_unsigned} onChange={(event) => setDraft({ ...draft, allow_unsigned: event.target.checked })} />
               <span><strong>{t("forward.allowUnsigned")}</strong><small>{t("forward.allowUnsignedHelp")}</small></span>
             </label>
+            <label className="forward-fallback forward-private">
+              <input type="checkbox" checked={draft.allow_private_addresses} onChange={(event) => setDraft({ ...draft, allow_private_addresses: event.target.checked })} />
+              <span><strong>{t("forward.allowPrivate")}</strong><small>{t("forward.allowPrivateHelp")}</small></span>
+            </label>
           </div>
           <div className="wizard-actions">
             <button type="button" onClick={saveDraft}>{editing === null ? t("forward.addDraft") : t("forward.applyEdit")}</button>
@@ -243,6 +248,7 @@ export default function UnboundForwardZones({
             <div className="forward-policies">
               <div className={`forward-policy ${zone.forward_first ? "fallback" : "strict"}`}><ShieldAlert size={14} />{zone.forward_first ? t("forward.policyFallback") : t("forward.policyStrict")}</div>
               <div className={`forward-policy ${zone.allow_unsigned ? "unsigned" : "validated"}`}>{zone.allow_unsigned ? <ShieldAlert size={14} /> : <ShieldCheck size={14} />}{zone.allow_unsigned ? t("forward.policyUnsigned") : t("forward.policyDNSSEC")}</div>
+              <div className={`forward-policy ${zone.allow_private_addresses ? "private" : "validated"}`}>{zone.allow_private_addresses ? <ShieldAlert size={14} /> : <ShieldCheck size={14} />}{zone.allow_private_addresses ? t("forward.policyPrivate") : t("forward.policyRebinding")}</div>
             </div>
             <div className="zone-actions"><button type="button" onClick={() => editZone(index)}><Pencil size={14} /> {t("common.edit")}</button><button type="button" onClick={() => removeZone(index)}><Trash2 size={14} /> {t("common.remove")}</button></div>
           </article>
@@ -280,6 +286,7 @@ function normalizeSettings(settings: UnboundSettings): UnboundSettings {
     forward_zones: (settings.forward_zones ?? []).map((zone) => ({
       ...zone,
       allow_unsigned: zone.allow_unsigned ?? false,
+      allow_private_addresses: zone.allow_private_addresses ?? false,
     })),
   };
 }
@@ -293,7 +300,13 @@ function normalizeForwardZone(zone: UnboundForwardZone, t: (key: string, values?
   if (zone.servers.length === 0) throw new Error(t("forward.validation.serverRequired"));
   const servers = zone.servers.map((server) => normalizeIPAddress(server, t));
   if (new Set(servers).size !== servers.length) throw new Error(t("forward.validation.duplicateServer"));
-  return { name, servers, forward_first: zone.forward_first, allow_unsigned: zone.allow_unsigned };
+  return {
+    name,
+    servers,
+    forward_first: zone.forward_first,
+    allow_unsigned: zone.allow_unsigned,
+    allow_private_addresses: zone.allow_private_addresses,
+  };
 }
 
 function normalizeZoneName(value: string, t: (key: string) => string) {
@@ -370,11 +383,16 @@ function validateLimits(zones: UnboundForwardZone[], t: (key: string, values?: R
 function forwardingSection(config: string) {
   const forwardStart = config.indexOf("# Conditional forwarding:");
   if (forwardStart < 0) return "";
-  const splitDNSLines = config
+  const serverPolicyLines = config
     .split("\n")
-    .filter((line) => line.includes("# Split DNS:") || line.trimStart().startsWith("domain-insecure:"));
-  const splitDNS = splitDNSLines.length > 0 ? `server:\n${splitDNSLines.join("\n")}\n\n` : "";
-  return splitDNS + config.slice(forwardStart);
+    .filter((line) =>
+      line.includes("# Split DNS:") ||
+      line.includes("# DNS rebinding:") ||
+      line.trimStart().startsWith("domain-insecure:") ||
+      line.trimStart().startsWith("private-domain:")
+    );
+  const serverPolicy = serverPolicyLines.length > 0 ? `server:\n${serverPolicyLines.join("\n")}\n\n` : "";
+  return serverPolicy + config.slice(forwardStart);
 }
 
 function errorMessage(error: unknown, fallback: string) {
