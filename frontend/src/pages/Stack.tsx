@@ -408,7 +408,7 @@ function AttestationBadge({ service, t, compact = false }: { service?: ServiceIn
   const status = service?.attestation || "unavailable";
   const tone = status === "verified" ? "trusted" : status === "failed" ? "danger" : status === "not_applicable" ? "neutral" : "attention";
   return (
-    <span className={`attestation-badge ${tone}`} title={compact ? t(`stack.attestationHelp.${status}`) : undefined}>
+    <span className={`attestation-badge ${tone}`} title={t(`stack.attestationHelp.${status}`)}>
       <ShieldCheck size={compact ? 11 : 13} /> {t(`stack.attestation.${status}`)}
     </span>
   );
