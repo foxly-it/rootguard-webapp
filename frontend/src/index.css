@@ -122,11 +122,25 @@
    Base Layout
 ----------------------------------------------------- */
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
   margin: 0;
   background: var(--rg-bg-main);
   color: var(--rg-text-primary);
   font-family: Inter, system-ui, sans-serif;
+}
+
+/* Header stays put and only .main scrolls, so the sidebar (and its
+   collapse control) never leaves the viewport on long pages. */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
 }
 
 .rg-skip-link {
@@ -180,7 +194,8 @@ body {
 
 .layout {
   display: flex;
-  min-height: calc(100vh - 70px);
+  flex: 1;
+  min-height: 0;
 }
 
 .sidebar a {
@@ -199,6 +214,8 @@ body {
 
 .main {
   flex: 1;
+  min-width: 0;
+  overflow-y: auto;
   padding: 50px 40px;
   display: flex;
   justify-content: center;
@@ -224,6 +241,15 @@ body {
   gap: 12px;
   box-sizing: border-box;
   transition: width 0.22s ease, flex-basis 0.22s ease, padding 0.22s ease;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .sidebar-collapsed .sidebar {
@@ -363,7 +389,6 @@ body {
 @media (max-width: 760px) {
   .layout {
     width: 100%;
-    min-height: calc(100vh - 64px);
     flex-direction: column;
     overflow-x: hidden;
   }
@@ -376,10 +401,21 @@ body {
     box-sizing: border-box;
     flex-direction: row;
     gap: 5px;
-    overflow-x: auto;
     padding: 9px 12px;
     border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    flex: 1;
+    gap: 5px;
+    overflow-x: auto;
+    overflow-y: visible;
     scrollbar-width: none;
+  }
+
+  .sidebar-nav::-webkit-scrollbar {
+    display: none;
   }
 
   .sidebar-collapsed .sidebar {
@@ -401,10 +437,6 @@ body {
   }
 
   .sidebar-collapsed .nav-item::after {
-    display: none;
-  }
-
-  .sidebar::-webkit-scrollbar {
     display: none;
   }
 

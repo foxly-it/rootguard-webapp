@@ -48,26 +48,32 @@ export default function SidebarLayout({ children }: Props) {
   }
 
   return (
-    <>
+    <div className="app-shell">
       <a className="rg-skip-link" href="#main-content">{t("accessibility.skipToContent")}</a>
       <Header />
 
       <div className={`layout${collapsed ? " sidebar-collapsed" : ""}`}>
 
         {/* ================= Sidebar ================= */}
+        {/* Fixed height (see .app-shell/.layout): only .sidebar-nav
+            scrolls internally if the item list ever outgrows the
+            viewport, so the collapse control at the bottom always
+            stays reachable without scrolling the page. */}
         <nav className="sidebar" aria-label={t("accessibility.mainNavigation")}>
-          {navigation.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}
-              aria-label={collapsed ? item.label : undefined}
-              data-tooltip={collapsed ? item.label : undefined}
-            >
-              <span className="nav-item-icon">{item.icon}</span>
-              <span className="nav-item-label">{item.label}</span>
-            </NavLink>
-          ))}
+          <div className="sidebar-nav">
+            {navigation.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}
+                aria-label={collapsed ? item.label : undefined}
+                data-tooltip={collapsed ? item.label : undefined}
+              >
+                <span className="nav-item-icon">{item.icon}</span>
+                <span className="nav-item-label">{item.label}</span>
+              </NavLink>
+            ))}
+          </div>
 
           <button
             className="sidebar-toggle"
@@ -88,6 +94,6 @@ export default function SidebarLayout({ children }: Props) {
         </main>
 
       </div>
-    </>
+    </div>
   );
 }
