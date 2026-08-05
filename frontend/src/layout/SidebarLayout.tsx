@@ -3,7 +3,8 @@
 // Purpose: Layout with Sidebar Navigation
 // =====================================================
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type FocusEvent, type MouseEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { NavLink } from "react-router";
 import {
   Boxes,
@@ -31,6 +32,22 @@ export default function SidebarLayout({ children }: Props) {
     // hidden and labels always show below the layout breakpoint).
     return window.innerWidth >= 760;
   });
+  const [tooltip, setTooltip] = useState<{ label: string; top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    if (!collapsed) setTooltip(null);
+  }, [collapsed]);
+
+  function showTooltip(event: MouseEvent<HTMLElement> | FocusEvent<HTMLElement>, label: string) {
+    if (!collapsed || window.innerWidth < 760) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    setTooltip({ label, top: rect.top + rect.height / 2, left: rect.right + 12 });
+  }
+
+  function hideTooltip() {
+    setTooltip(null);
+  }
+
   const navigation = [
     { to: "/dashboard", label: t("nav.overview"), icon: <LayoutDashboard aria-hidden="true" /> },
     { to: "/setup", label: t("nav.setup"), icon: <ServerCog aria-hidden="true" /> },
@@ -67,7 +84,10 @@ export default function SidebarLayout({ children }: Props) {
                 to={item.to}
                 className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}
                 aria-label={collapsed ? item.label : undefined}
-                data-tooltip={collapsed ? item.label : undefined}
+                onMouseEnter={(event) => showTooltip(event, item.label)}
+                onMouseLeave={hideTooltip}
+                onFocus={(event) => showTooltip(event, item.label)}
+                onBlur={hideTooltip}
               >
                 <span className="nav-item-icon">{item.icon}</span>
                 <span className="nav-item-label">{item.label}</span>
@@ -87,6 +107,13 @@ export default function SidebarLayout({ children }: Props) {
             <span>{t("nav.collapseSidebar")}</span>
           </button>
         </nav>
+
+        {tooltip && createPortal(
+          <div className="rg-nav-tooltip" role="presentation" style={{ top: tooltip.top, left: tooltip.left }}>
+            {tooltip.label}
+          </div>,
+          document.body,
+        )}
 
         {/* ================= Main ================= */}
         <main className="main" id="main-content" tabIndex={-1}>

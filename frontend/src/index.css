@@ -250,6 +250,7 @@ body {
   gap: 12px;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar-collapsed .sidebar {
@@ -338,33 +339,6 @@ body {
   padding-inline: 10px;
 }
 
-.sidebar-collapsed .nav-item::after {
-  position: absolute;
-  z-index: 40;
-  top: 50%;
-  left: calc(100% + 12px);
-  padding: 7px 10px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--bg-header);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
-  color: var(--text);
-  content: attr(data-tooltip);
-  font-size: 0.78rem;
-  font-weight: 650;
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(4px, -50%);
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  white-space: nowrap;
-}
-
-.sidebar-collapsed .nav-item:hover::after,
-.sidebar-collapsed .nav-item:focus-visible::after {
-  opacity: 1;
-  transform: translate(0, -50%);
-}
-
 .nav-item:hover {
   background: var(--border-subtle);
   color: var(--text);
@@ -436,10 +410,6 @@ body {
     justify-content: flex-start;
   }
 
-  .sidebar-collapsed .nav-item::after {
-    display: none;
-  }
-
   .sidebar a,
   .nav-item {
     flex: 0 0 auto;
@@ -463,4 +433,23 @@ body {
     box-sizing: border-box;
     padding: 22px 16px 46px;
   }
+}
+
+/* Nav item tooltip (collapsed desktop sidebar only). Rendered via a
+   document.body portal and positioned in JS so it is never clipped by
+   .sidebar-nav's overflow (needed for its own internal scroll). */
+.rg-nav-tooltip {
+  position: fixed;
+  z-index: 1000;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-header);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 650;
+  pointer-events: none;
+  transform: translateY(-50%);
+  white-space: nowrap;
 }
