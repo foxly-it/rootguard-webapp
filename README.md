@@ -1,5 +1,10 @@
 # RootGuard WebApp
 
+> [!IMPORTANT]
+> This repository is archived. Development moved to the
+> [`rootguard` monorepo](https://github.com/foxly-it/rootguard/tree/main/rootguard-webapp)
+> (`rootguard-webapp/` directory) — full history preserved there.
+
 ![RootGuard WebApp – One interface for your DNS stack](assets/rootguard-webapp-social-preview.png)
 
 **RootGuard WebApp is the secure browser interface for the RootGuard
